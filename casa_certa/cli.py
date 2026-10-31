@@ -25,7 +25,7 @@ from casa_certa.sources.apify import ApifyActorRunner
 from casa_certa.sources.registry import build_price_source, build_review_source
 from casa_certa.web.crypto import check_passphrase
 from casa_certa.web.passphrase import generate_passphrase
-from casa_certa.web.publish import PublishError, origin_url, pages_url, publish
+from casa_certa.web.publish import PublishError, origin_url, pages_url, publish, redact_url
 from casa_certa.web.site import write_site
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -121,8 +121,11 @@ async def _run(args: argparse.Namespace) -> int:
 async def _site(args: argparse.Namespace) -> int:
     try:
         settings = SiteSettings()
-    except ValidationError:
-        print("error: set SITE_PASSPHRASE in .env (run `make passphrase` to generate one)", file=sys.stderr)
+    except ValidationError as error:
+        if any("site_passphrase" in item["loc"] for item in error.errors()):
+            print("error: set SITE_PASSPHRASE in .env (run `make passphrase` to generate one)", file=sys.stderr)
+        else:
+            print(f"error: invalid settings: {error}", file=sys.stderr)  # pydantic does not echo secret values
         return 2
     trip = await YamlConfigSource(args.trip_file).load()
     passphrase = settings.site_passphrase.get_secret_value()
@@ -141,8 +144,9 @@ async def _site(args: argparse.Namespace) -> int:
 
 async def _publish(args: argparse.Namespace) -> int:
     origin = await origin_url(PROJECT_ROOT)
-    target = pages_url(origin) or origin
-    print(f"This replaces the gh-pages branch of {origin} with the contents of {args.site_dir} (served at {target}).")
+    shown = redact_url(origin)
+    target = pages_url(origin) or shown
+    print(f"This replaces the gh-pages branch of {shown} with the contents of {args.site_dir} (served at {target}).")
     if not args.yes and not await _confirm():
         print("Cancelled.")
         return 1

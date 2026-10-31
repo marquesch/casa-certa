@@ -8,6 +8,8 @@ from pathlib import Path
 
 BRANCH = "gh-pages"
 COMMIT_MESSAGE = "chore: publish site"
+_USERINFO = re.compile(r"^(?P<scheme>[a-z][a-z0-9+.-]*://)[^/@]*@")
+SITE_FILES = ("index.html", ".nojekyll")
 _GITHUB_URL = re.compile(r"(?:git@github\.com:|https://github\.com/)(?P<owner>[^/]+)/(?P<repo>[^/]+?)(?:\.git)?/?$")
 
 
@@ -37,15 +39,24 @@ def pages_url(origin: str) -> str | None:
     return f"https://{match['owner']}.github.io/{match['repo']}/"
 
 
+def redact_url(url: str) -> str:
+    """The URL without any `user:token@` credentials (scp-style and local paths are returned unchanged)."""
+    return _USERINFO.sub(r"\g<scheme>", url)
+
+
 async def publish(site_dir: Path, origin: str) -> None:
     """Force-push the site files as one orphan commit to the gh-pages branch of `origin`.
+
+    Only `index.html` and `.nojekyll` are published; anything else in `site_dir` is ignored.
 
     The working tree, `master` and every local branch are untouched: the commit is built in a temporary repository."""
     if not (site_dir / "index.html").is_file():
         raise PublishError(f"No site in {site_dir}: run `make site` first.")
     with tempfile.TemporaryDirectory() as temporary:
         work = Path(temporary)
-        await asyncio.to_thread(shutil.copytree, site_dir, work, dirs_exist_ok=True)
+        for name in SITE_FILES:
+            if (site_dir / name).is_file():
+                await asyncio.to_thread(shutil.copy2, site_dir / name, work / name)
         await _git(work, "init", "-q", "-b", BRANCH)
         await _git(work, "add", "--all")
         await _git(work, "commit", "-q", "-m", COMMIT_MESSAGE)

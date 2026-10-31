@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from casa_certa.web.publish import PublishError, origin_url, pages_url, publish
+from casa_certa.web.publish import PublishError, origin_url, pages_url, publish, redact_url
 
 
 def git(*args: str, cwd: Path | None = None) -> str:
@@ -85,3 +85,34 @@ async def test_origin_url_reads_the_remote_of_a_repository(tmp_path: Path) -> No
 )
 def test_pages_url(origin: str, expected: str | None) -> None:
     assert pages_url(origin) == expected
+
+
+async def test_publish_ignores_everything_but_the_site_files(site: Path, remote: Path) -> None:
+    (site / "secret.txt").write_text("secret", encoding="utf8")
+    (site / ".env").write_text("TOKEN=1", encoding="utf8")
+    (site / "nested").mkdir()
+    (site / "nested" / "file.txt").write_text("x", encoding="utf8")
+
+    await publish(site, str(remote))
+
+    assert sorted(git("ls-tree", "-r", "--name-only", "gh-pages", cwd=remote).split()) == [".nojekyll", "index.html"]
+
+
+async def test_publish_works_without_nojekyll(site: Path, remote: Path) -> None:
+    (site / ".nojekyll").unlink()
+    await publish(site, str(remote))
+    assert git("ls-tree", "--name-only", "gh-pages", cwd=remote).split() == ["index.html"]
+
+
+@pytest.mark.parametrize(
+    ("url", "expected"),
+    [
+        ("https://token@github.com/a/b.git", "https://github.com/a/b.git"),
+        ("https://user:pw@github.com/a/b.git", "https://github.com/a/b.git"),
+        ("https://github.com/a/b.git", "https://github.com/a/b.git"),
+        ("git@github.com:a/b.git", "git@github.com:a/b.git"),
+        ("/tmp/some/local.git", "/tmp/some/local.git"),
+    ],
+)
+def test_redact_url(url: str, expected: str) -> None:
+    assert redact_url(url) == expected
