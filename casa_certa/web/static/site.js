@@ -58,8 +58,7 @@
       for (const card of inSection) card.element.hidden = !visible.includes(card);
       for (const card of visible) container.append(card.element);
       const count = section.querySelector(".count");
-      const word = count.textContent.split(" ")[2];
-      count.textContent = `(${visible.length} ${word} ${inSection.length})`;
+      count.textContent = `(${visible.length} ${count.dataset.of} ${inSection.length})`;
       section.querySelector(".empty").hidden = visible.length > 0;
     }
     for (const card of cards) {

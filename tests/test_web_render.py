@@ -33,6 +33,7 @@ async def test_page_has_header_sections_filters_and_card_data(session: AsyncSess
     assert "Atualizado em" in html
     assert 'id="complete"' in html and 'id="incomplete"' in html
     assert "Têm todos os essenciais" in html and "Faltam essenciais" in html
+    assert 'class="count" data-of="de"' in html  # site.js reads the word from here when it updates the counts
     assert "Casa do Albatroz" in html
     assert 'data-city="Matinhos"' in html
     assert 'data-price9="40834"' in html

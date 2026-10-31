@@ -66,7 +66,7 @@
 
 {% macro group(id, title, cards, show_missing) %}
 <section class="group" id="{{ id }}">
-  <h2>{{ title }} <span class="count">({{ cards | length }} {{ labels.count_of }} {{ cards | length }})</span></h2>
+  <h2>{{ title }} <span class="count" data-of="{{ labels.count_of }}">({{ cards | length }} {{ labels.count_of }} {{ cards | length }})</span></h2>
   <div class="cards">{% for c in cards %}{{ card(c, show_missing) }}{% endfor %}</div>
   <p class="empty muted"{% if cards %} hidden{% endif %}>{{ labels.no_matches }}</p>
 </section>
