@@ -1,0 +1,3 @@
+[submodule "whatsapp-worker"]
+	path = whatsapp-worker
+	url = git@github.com:marquesch/whatsapp-worker.git
