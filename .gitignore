@@ -9,3 +9,7 @@ __pycache__/
 
 # Your trip: personal, never commit it. Copy trip.example.yaml to trip.yaml and edit.
 trip.yaml
+
+# Office lock files (they contain the local user name and host)
+.~lock.*
+~$*

@@ -1,5 +1,6 @@
 """Price adapters: one per Apify actor, each with a pure `build_input` and `parse_item`."""
 
+import logging
 import re
 from abc import ABC, abstractmethod
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
@@ -58,6 +59,9 @@ def _price_block(item: dict[str, Any], key: str) -> dict[str, Any]:
     return price
 
 
+log = logging.getLogger(__name__)
+
+
 class PriceActorSource(ABC):
     """Runs one price actor for one group size. Subclasses give the actor, its input and how to read an item."""
 
@@ -83,6 +87,7 @@ class PriceActorSource(ABC):
     async def fetch_prices(self, room_ids: list[str], trip: TripConfig, guests: int) -> SourceBatch[PriceData]:
         """One actor run quoting `guests` paying guests for all houses. Houses without a usable result map to an
         ApifyError; a house that is not available for that group maps to a PriceData without a total."""
+        log.info("prices: %s for %d houses, %d guests", self.name, len(room_ids), guests)
         try:
             items = await self._runner.run_actor(
                 self.ACTOR,

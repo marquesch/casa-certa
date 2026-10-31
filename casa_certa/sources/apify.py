@@ -4,6 +4,8 @@ The actual actor execution is hidden behind `ActorRunner`, so tests can inject a
 stays free of network access.
 """
 
+import logging
+import time
 from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import Any, Protocol
@@ -12,6 +14,8 @@ import httpx
 from apify_client import ApifyClientAsync
 from apify_client.errors import ApifyClientError
 from pydantic import BaseModel
+
+log = logging.getLogger(__name__)
 
 # The platform aborts a run that takes longer than this, which surfaces as a non-SUCCEEDED status.
 ACTOR_RUN_TIMEOUT = timedelta(minutes=10)
@@ -67,10 +71,28 @@ class ApifyActorRunner:
         max_items: int | None = None,
         max_total_charge_usd: float | None = None,
     ) -> list[dict[str, Any]]:
+        started = time.monotonic()
+        log.info("apify %s: run started", actor_id)
+        try:
+            items = await self._run(actor_id, run_input, max_items, max_total_charge_usd)
+        except ApifyError as error:
+            log.warning("apify %s: failed after %.0fs (%s)", actor_id, time.monotonic() - started, error)
+            raise
+        log.info("apify %s: done in %.0fs, %d items", actor_id, time.monotonic() - started, len(items))
+        return items
+
+    async def _run(
+        self, actor_id: str, run_input: dict[str, Any], max_items: int | None, max_total_charge_usd: float | None
+    ) -> list[dict[str, Any]]:
         ceiling = None if max_total_charge_usd is None else Decimal(str(max_total_charge_usd))
         try:
+            # logger=None: the client would otherwise stream every line of the actor's own log
             run = await self._client.actor(actor_id).call(
-                run_input=run_input, max_items=max_items, max_total_charge_usd=ceiling, run_timeout=ACTOR_RUN_TIMEOUT
+                run_input=run_input,
+                max_items=max_items,
+                max_total_charge_usd=ceiling,
+                run_timeout=ACTOR_RUN_TIMEOUT,
+                logger=None,
             )
         except (ApifyClientError, httpx.HTTPError) as e:
             raise ApifyError(f"Actor {actor_id} could not be run: {e!r}") from e

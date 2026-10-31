@@ -1,5 +1,6 @@
 """Review adapters: one per Apify actor, each with a pure `build_input` and `parse`."""
 
+import logging
 import re
 from abc import ABC, abstractmethod
 from datetime import UTC, datetime
@@ -31,6 +32,9 @@ def review_data(review_id: Any, text: Any, created_at: Any, rating: Any, languag
         raise ReviewParseError(f"Malformed review item {review_id!r}: {e!r}") from e
 
 
+log = logging.getLogger(__name__)
+
+
 class ReviewActorSource(ABC):
     """Runs one review actor for all houses. Subclasses give the actor, its input and how to read the items."""
 
@@ -59,6 +63,7 @@ class ReviewActorSource(ABC):
         """The most recent `trip.review_cap` reviews per house; houses without reviews map to []."""
         if trip.review_cap == 0 or not room_ids:
             return SourceBatch({room_id: [] for room_id in room_ids})
+        log.info("reviews: %s for %d houses, up to %d each", self.name, len(room_ids), trip.review_cap)
         try:
             items = await self._runner.run_actor(
                 self.ACTOR,

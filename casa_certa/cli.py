@@ -16,6 +16,7 @@ from casa_certa.config_sources.base import ConfigError
 from casa_certa.config_sources.yaml_source import YamlConfigSource
 from casa_certa.db.session import create_session_factory
 from casa_certa.export.xlsx import build_workbook
+from casa_certa.logging_setup import configure_logging
 from casa_certa.pipeline import Pipeline, RunPlan
 from casa_certa.sources.airbnb_page import make_client
 from casa_certa.sources.apify import ApifyActorRunner
@@ -106,6 +107,7 @@ async def _run(args: argparse.Namespace) -> int:
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+    configure_logging()
     try:
         return asyncio.run(_run(args))
     except (ConfigError, ValueError) as error:

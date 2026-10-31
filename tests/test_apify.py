@@ -63,6 +63,7 @@ async def test_actor_runner_returns_items_and_bounds_the_run() -> None:
         "max_items": 7,
         "max_total_charge_usd": None,
         "run_timeout": ACTOR_RUN_TIMEOUT,
+        "logger": None,
     }
     assert timedelta(minutes=10) == ACTOR_RUN_TIMEOUT
 

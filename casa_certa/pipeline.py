@@ -1,6 +1,8 @@
 """Orchestration: decide what to fetch (cache-first), fetch it, persist it, analyze it."""
 
 import asyncio
+import logging
+import time
 from dataclasses import dataclass, field
 
 import httpx
@@ -29,6 +31,8 @@ from casa_certa.sources.protocols import PriceSource, ReviewSource, SourceBatch
 
 # Price runs in flight at once; below the free Apify plan's limit of 5 concurrent actor jobs.
 MAX_CONCURRENT_PRICE_RUNS = 3
+
+log = logging.getLogger(__name__)
 
 # Errors that fail one house but not the whole run.
 HOUSE_ERRORS = (AirbnbPageError, ApifyError, AgentRunError, SQLAlchemyError)
@@ -133,6 +137,7 @@ class Pipeline:
         warnings: dict[str, list[str]] = {}
         pages: dict[str, ListingFacts | AirbnbPageError] = {}
         if plan.fetch_facts:
+            log.info("fetching %d listing pages (free; paced to be polite)", len(plan.fetch_facts))
             pages = await fetch_listings(plan.fetch_facts, client=self._http, delay=self._page_delay, sleep=self._sleep)
         await self._store_all_facts(trip, plan, pages, failures, warnings)
         in_play = [room_id for room_id in plan.room_ids if room_id not in failures]
@@ -156,15 +161,18 @@ class Pipeline:
         """Phase 2: name, create and commit each house on its own; a failure drops only that house from the run."""
         async with self._session_factory() as session:
             repo = HouseRepository(session)
-            for room_id in plan.fetch_facts:
+            total = len(plan.fetch_facts)
+            for index, room_id in enumerate(plan.fetch_facts, start=1):
                 messages: list[str] = []
                 try:
-                    await self._store_facts(repo, trip, room_id, pages[room_id], messages)
+                    house = await self._store_facts(repo, trip, room_id, pages[room_id], messages)
                     await repo.commit()
                 except HOUSE_ERRORS as error:
                     await repo.rollback()
                     failures[room_id] = str(error)
+                    log.warning("[%d/%d] %s: failed (%s)", index, total, room_id, error)
                     continue
+                log.info("[%d/%d] %s (%s): listing saved", index, total, house.name, room_id)
                 if messages:
                     warnings.setdefault(room_id, []).extend(messages)
 
@@ -181,9 +189,11 @@ class Pipeline:
     ) -> list[House]:
         """Phase 4: save reviews and prices, commit, then analyse. Returns the houses that made it."""
         houses: list[House] = []
+        total = len(room_ids)
+        log.info("saving reviews and prices, then analysing %d houses with %s", total, self._analyst.model_name)
         async with self._session_factory() as session:
             repo = HouseRepository(session)
-            for room_id in room_ids:
+            for index, room_id in enumerate(room_ids, start=1):
                 messages: list[str] = []
                 try:
                     house = await self._store_extras(
@@ -192,11 +202,22 @@ class Pipeline:
                     if room_id in notes and house.extra != notes[room_id]:
                         house.extra = notes[room_id]
                     await repo.commit()  # keep paid data even if the analysis below fails
-                    await self._analyze_if_stale(repo, trip, house)
+                    analysis_seconds = await self._analyze_if_stale(repo, trip, house)
                 except HOUSE_ERRORS as error:
                     await repo.rollback()
                     failures[room_id] = str(error)
+                    log.warning("[%d/%d] %s: failed (%s)", index, total, room_id, error)
                     continue
+                log.info(
+                    "[%d/%d] %s (%s): done - %d reviews, %d price quotes, analysis %s",
+                    index,
+                    total,
+                    house.name,
+                    room_id,
+                    len(house.reviews),
+                    len(house.quotes_by_guests(trip)),
+                    "cached" if analysis_seconds is None else f"{analysis_seconds:.0f}s",
+                )
                 if messages:
                     warnings.setdefault(room_id, []).extend(messages)
             for room_id in room_ids:
@@ -277,19 +298,20 @@ class Pipeline:
         room_id: str,
         page: ListingFacts | AirbnbPageError,
         warnings: list[str],
-    ) -> None:
+    ) -> House:
         """Create the house if it is new and save its facts. A failed refresh of a known house only warns."""
         house = await repo.get(room_id)
         if isinstance(page, AirbnbPageError):
             if house is None:
                 raise page
             warnings.append(f"could not refresh the listing facts: {page}")
-        else:
-            if house is None:
-                suggested = (await self._namer.name(page, trip.language)).strip()
-                suggested = suggested or (page.title or "").strip() or f"Casa {room_id}"
-                house = await repo.add(room_id, make_unique_name(suggested, await repo.names()))
-            await repo.save_facts(house, page)
+            return house
+        if house is None:
+            suggested = (await self._namer.name(page, trip.language)).strip()
+            suggested = suggested or (page.title or "").strip() or f"Casa {room_id}"
+            house = await repo.add(room_id, make_unique_name(suggested, await repo.names()))
+        await repo.save_facts(house, page)
+        return house
 
     @staticmethod
     def _house_notes(trip: TripConfig, warnings: dict[str, list[str]]) -> dict[str, str]:
@@ -326,12 +348,18 @@ class Pipeline:
                 await repo.save_quote(house, trip, size, price)
         return house
 
-    async def _analyze_if_stale(self, repo: HouseRepository, trip: TripConfig, house: House) -> None:
-        """Run the analyst unless the stored analysis was made from the exact same prompt."""
+    async def _analyze_if_stale(self, repo: HouseRepository, trip: TripConfig, house: House) -> float | None:
+        """Run the analyst unless the stored analysis was made from the exact same prompt.
+
+        Returns the seconds the analysis took, or None when the stored one was reused."""
         instructions = analysis_instructions(trip)
         prompt = analysis_prompt(house, trip)
         digest = prompt_hash(instructions, prompt)
-        if house.analysis is None or house.analysis.input_hash != digest:
-            analysis = await self._analyst.analyze(prompt, instructions, [aspect.name for aspect in trip.aspects])
-            await repo.save_analysis(house, digest, self._analyst.model_name, analysis)
-            await repo.commit()
+        if house.analysis is not None and house.analysis.input_hash == digest:
+            return None
+        log.info("%s: analysing with %s (this is the slow step)...", house.name, self._analyst.model_name)
+        started = time.monotonic()
+        analysis = await self._analyst.analyze(prompt, instructions, [aspect.name for aspect in trip.aspects])
+        await repo.save_analysis(house, digest, self._analyst.model_name, analysis)
+        await repo.commit()
+        return time.monotonic() - started

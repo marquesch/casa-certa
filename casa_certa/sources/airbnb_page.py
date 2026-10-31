@@ -13,13 +13,17 @@ import asyncio
 import base64
 import html as html_lib
 import json
+import logging
 import random
 import re
+import time
 from collections.abc import Awaitable, Callable
 from typing import Any
 
 import httpx
 from pydantic import BaseModel, Field
+
+log = logging.getLogger(__name__)
 
 DEFAULT_DOMAIN = "www.airbnb.com.br"
 DEFAULT_USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64; rv:130.0) Gecko/20100101 Firefox/130.0"
@@ -384,6 +388,7 @@ async def fetch_html(
     """GET a page, retrying once (after `retry_wait` seconds) on 429/5xx."""
     response = await _get(client, url)
     if response.status_code in RETRYABLE_STATUSES:
+        log.warning("page %s: HTTP %d, retrying once in %.0fs", url, response.status_code, retry_wait)
         await sleep(retry_wait)
         response = await _get(client, url)
     if response.status_code != 200:
@@ -418,13 +423,18 @@ async def fetch_listings(
     A failure on one listing does not stop the others: the error is returned in place of the result.
     """
     results: dict[str, ListingFacts | AirbnbPageError] = {}
-    for index, item in enumerate(urls_or_ids):
-        if index > 0:
+    total = len(urls_or_ids)
+    for index, item in enumerate(urls_or_ids, start=1):
+        if index > 1:
             await sleep(random.uniform(*delay))
+        started = time.monotonic()
         try:
             results[item] = await fetch_listing(item, client=client, sleep=sleep)
+            log.info("page %d/%d %s: ok in %.1fs", index, total, item, time.monotonic() - started)
         except AirbnbPageError as e:
             results[item] = e
+            log.warning("page %d/%d %s: failed (%s)", index, total, item, e)
         except ValueError as e:  # not a listing url or id
             results[item] = PageFetchError(str(e))
+            log.warning("page %d/%d %s: skipped (%s)", index, total, item, e)
     return results
