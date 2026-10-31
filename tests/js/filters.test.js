@@ -84,3 +84,12 @@ test("sort by beach: nearest first, unknown last, then cheapest", () => {
   const sorted = [unknown, near2, front, near].sort((a, b) => compare(a, b, state({ sort: "beach" })));
   assert.deepEqual(sorted, [front, near, near2, unknown]);
 });
+
+test("pending (unanalysed) cards sort after analysed ones in every sort mode", () => {
+  const pending = card({ pending: true, prices: { 13: 1000 }, rating: 5, beachM: 1 });
+  const analysed = card({ prices: { 13: 90000 }, rating: 3, beachM: 900 });
+  for (const sort of ["price", "rating", "beach"]) {
+    const sorted = [pending, analysed].sort((a, b) => compare(a, b, state({ sort })));
+    assert.deepEqual(sorted, [analysed, pending], sort);
+  }
+});

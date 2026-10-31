@@ -96,10 +96,10 @@ def city_of(location_name: str | None) -> str | None:
     return location_name.split(",")[0].strip() or None
 
 
-def default_sort_key(card: HouseCard, people: int) -> tuple[bool, int, float, str]:
-    """Cheapest per person at `people` first, houses without a price last, then best rated, then by name."""
+def default_sort_key(card: HouseCard, people: int) -> tuple[bool, bool, int, float, str]:
+    """Analysed houses first; then cheapest per person at `people`, houses without a price last, best rated, name."""
     price = card.per_person_cents(people)
-    return (price is None, price or 0, -(card.rating or 0.0), card.name)
+    return (not card.analysed, price is None, price or 0, -(card.rating or 0.0), card.name)
 
 
 def _aspect_views(house: House, trip: TripConfig) -> tuple[AspectView, ...]:

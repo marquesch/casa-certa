@@ -1,7 +1,14 @@
 "use strict";
 
 (() => {
-  const money = new Intl.NumberFormat(document.documentElement.lang || "pt-BR", { style: "currency", currency: "BRL" });
+  const currency = { style: "currency", currency: "BRL" };
+  const money = (() => {
+    try {
+      return new Intl.NumberFormat(document.documentElement.lang || "pt-BR", currency);
+    } catch (error) {
+      return new Intl.NumberFormat("pt-BR", currency); // an invalid language tag throws a RangeError
+    }
+  })();
   const panel = document.getElementById("filters");
   const size = document.getElementById("f-size");
   const min = document.getElementById("f-min");
@@ -28,6 +35,7 @@
       reviews: number(element.dataset.reviews ?? ""),
       beachM: number(element.dataset.beach ?? ""),
       prices,
+      pending: element.dataset.pending === "1",
       met: element.dataset.met ? element.dataset.met.split(" ").map(Number) : [],
     };
   }

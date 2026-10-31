@@ -6,9 +6,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from casa_certa.db.models import House
 from casa_certa.db.repository import HouseRepository
 from casa_certa.enums import AspectStatus, EvidenceSource
+from casa_certa.pricing import PriceRow
 from casa_certa.sources.airbnb_page import ListingFacts
 from casa_certa.sources.apify import PriceData
-from casa_certa.web.model import build_site, city_of
+from casa_certa.web.model import HouseCard, build_site, city_of, default_sort_key
 from tests.fakes import ALBATROZ_TOTAL, ITAPOA_TOTALS, make_trip, sample_analysis
 
 MUST = "Perto da praia"
@@ -169,3 +170,15 @@ async def test_beach_distance_and_text_are_copied_from_the_analysis(
     assert card.cons == ("Sem ar-condicionado",)
     assert [a.name for a in card.aspects] == [MUST, NICE]
     assert card.aspects[0].evidence[0].quote == "100 metros do mar"
+
+
+def test_unanalysed_cards_sort_after_analysed_ones_even_when_cheaper() -> None:
+    cheap_row = PriceRow(people=13, total_cents=100, original_total_cents=None, per_person_cents=10)
+    dear_row = PriceRow(people=13, total_cents=900, original_total_cents=None, per_person_cents=90)
+    pending = HouseCard(name="a", url="u", analysed=False, prices=(cheap_row,))
+    analysed = HouseCard(name="b", url="u", analysed=True, prices=(dear_row,))
+    unpriced = HouseCard(name="c", url="u", analysed=True)
+
+    ordered = sorted([pending, unpriced, analysed], key=lambda card: default_sort_key(card, 13))
+
+    assert [card.name for card in ordered] == ["b", "c", "a"]

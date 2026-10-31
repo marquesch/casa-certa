@@ -114,10 +114,11 @@ A collapsible "Filtros" panel (a button on phones, always open on wide screens):
 Behaviour: filters apply inside both sections. Section headings show live counts ("Têm todos os essenciais (4 de 7)").
 A section with no match shows a short message. Houses without a price for the selected size are hidden while a price
 bound is set and otherwise sort last. Sorting ties break by the other criteria: price ties by rating, rating ties by
-price, distance ties by price; unknown values sort last.
+price, distance ties by price; unknown values sort last. Unanalysed ("sem análise") cards sort last in every mode
+(`data-pending="1"`).
 
 Implementation: each card carries `data-*` attributes (`data-city`, `data-rating`, `data-reviews`, `data-beach`,
-`data-price-9` ... `data-price-13` in cents per person, `data-met` = space-separated indexes of `MET` aspects). The
+`data-price9` ... `data-price13` in cents per person, `data-met` = space-separated indexes of `MET` aspects). The
 filter state is a plain object, `filters.js` exposes pure functions (`matches(card, state)`, `compare(a, b, state)`)
 and a thin DOM layer applies them by toggling `hidden` and reordering nodes. The server-side order is already the
 default sort.
@@ -135,10 +136,11 @@ Per-person prices are rounded up to whole cents of the total, exactly as in the 
   scripts run.
 - "Lembrar neste aparelho" stores the passphrase in that browser's `localStorage` and unlocks automatically next time;
   if it no longer decrypts (a new passphrase was published), the form is shown again. Off by default.
-- Strength rule: `site` refuses to build when `SITE_PASSPHRASE` is missing, has fewer than five words (separated by
-  `-` or spaces) and is shorter than 30 characters. This is a guard against obviously weak choices, not proof of
-  strength. `casa-certa passphrase` prints five random words drawn with `secrets` from a vendored word list of at
-  least 2048 words (about 55 bits).
+- Strength rule: `site` refuses to build when `SITE_PASSPHRASE` is missing, does not have either five words of 3+
+  letters (separated by `-` or spaces) with 20+ characters, or 40+ characters, and in both cases 12+ distinct
+  characters (so `the cat dog red sun` and 30 times `x` are refused). This is a guard against obviously weak
+  choices, not proof of strength; the generator redraws the rare phrase that would fail it. `casa-certa passphrase`
+  prints five random words drawn with `secrets` from a vendored word list of at least 2048 words (about 55 bits).
 - No custom cryptography: Python `cryptography` primitives to encrypt, browser WebCrypto to decrypt.
 
 ## Publishing

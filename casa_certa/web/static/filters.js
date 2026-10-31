@@ -1,7 +1,7 @@
 "use strict";
 
 // Pure filtering and sorting for the house cards. A card is
-// { city, rating, reviews, beachM, prices: { <people>: cents per person | null }, met: [aspect indexes] }.
+// { city, rating, reviews, beachM, pending (not analysed yet), prices: { <people>: cents per person | null }, met: [aspect indexes] }.
 // The state is { size, minPrice, maxPrice (reais per person), cities, maxBeachM, aspects, sort }.
 const filters = (() => {
   const num = (value) => (typeof value === "number" && !Number.isNaN(value) ? value : null);
@@ -35,6 +35,7 @@ const filters = (() => {
   }
 
   function compare(a, b, state) {
+    if (a.pending !== b.pending) return a.pending ? 1 : -1; // unanalysed houses go last in every sort mode
     const price = byValue(priceOf(a, state), priceOf(b, state), 1);
     const rating = byValue(a.rating, b.rating, -1);
     if (state.sort === "rating") return rating || price;

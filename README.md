@@ -90,7 +90,16 @@ make site && make publish
 One-time: in the repository settings, Pages, deploy from the `gh-pages` branch (root). Then share the URL and the
 passphrase with the group. The page has two sections (houses with every must-have, and the others) and filters for
 group size, price per person, city, distance to the beach and required aspects, plus sorting. There is no revocation:
-to cut someone off, change `SITE_PASSPHRASE` and publish again. Never commit `site/`.
+to cut someone off, change `SITE_PASSPHRASE` and publish again. Never commit `site/`. Houses without an analysis
+("sem análise") are listed last in the second section.
+
+Security notes:
+
+- The output of `make passphrase` is as sensitive as a password: anyone who has it and the URL can read the site.
+- The page is decrypted on the device, in the browser; the server only ever holds ciphertext.
+- "Lembrar neste aparelho" stores the passphrase in that browser's `localStorage`, on the `<user>.github.io` origin,
+  which is shared with every other Pages site of the same GitHub user: those sites can read it. Leave it off on shared
+  or untrusted devices.
 
 ## Development
 

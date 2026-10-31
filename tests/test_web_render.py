@@ -38,7 +38,7 @@ async def test_page_has_header_sections_filters_and_card_data(session: AsyncSess
     assert 'data-city="Matinhos"' in html
     assert 'data-price9="40834"' in html
     assert 'data-price13=""' in html
-    assert 'data-met="0 1"' in html
+    assert 'data-met="0 1"' in html and 'data-pending=""' in html
     assert 'id="f-size"' in html and 'id="f-min"' in html and 'id="f-beach"' in html and 'id="f-sort"' in html
     assert 'name="city" value="Matinhos"' in html
     assert 'name="aspect" value="0"' in html and 'name="aspect" value="1"' in html
@@ -117,3 +117,8 @@ async def test_the_page_can_be_rendered_in_english(session: AsyncSession, stored
     house = await analysed_house(session, stored_house)
     html = page(house, language="en")
     assert "Have every must-have" in html and "Missing must-haves" in html
+
+
+async def test_an_unanalysed_card_is_marked_pending_for_the_script(session: AsyncSession, stored_house: House) -> None:
+    html = page(stored_house)
+    assert 'data-pending="1"' in html
