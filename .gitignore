@@ -13,3 +13,6 @@ trip.yaml
 # Office lock files (they contain the local user name and host)
 .~lock.*
 ~$*
+
+# The built site (encrypted, but generated: it is published to gh-pages, never committed to master)
+site/

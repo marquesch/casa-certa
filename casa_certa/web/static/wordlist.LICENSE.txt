@@ -1,0 +1,2 @@
+wordlist.txt is the EFF Long Wordlist (https://www.eff.org/dice), (c) Electronic Frontier Foundation,
+licensed under CC BY 3.0 US (https://creativecommons.org/licenses/by/3.0/us/). The dice numbers were removed.

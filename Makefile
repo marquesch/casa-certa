@@ -1,7 +1,7 @@
 .DEFAULT_GOAL := help
 TRIP ?= trip.yaml
 
-.PHONY: help install hooks format lint typecheck test test-live test-live-sources check dry-run run refresh migrate migration clean
+.PHONY: help install hooks format lint typecheck test test-live test-live-sources check dry-run run refresh site publish passphrase migrate migration clean
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}'
@@ -45,6 +45,15 @@ run: ## Analyze the houses and write the spreadsheet (TRIP=trip.yaml)
 
 refresh: ## Re-fetch everything from Airbnb, costs money (TRIP=trip.yaml)
 	uv run casa-certa run $(TRIP) --refresh
+
+site: ## Build the encrypted site from the stored data, no network (TRIP=trip.yaml)
+	uv run casa-certa site $(TRIP)
+
+publish: ## Publish the built site to the gh-pages branch of origin
+	uv run casa-certa publish
+
+passphrase: ## Print a new random passphrase for SITE_PASSPHRASE
+	uv run casa-certa passphrase
 
 migrate: ## Apply database migrations
 	uv run alembic upgrade head

@@ -64,6 +64,12 @@ class DatabaseSettings(BaseSettings):
     database_url: str = DEFAULT_DATABASE_URL
 
 
+class SiteSettings(DatabaseSettings):
+    """What `casa-certa site` needs: the database and the shared passphrase (no API keys)."""
+
+    site_passphrase: SecretStr
+
+
 class Settings(DatabaseSettings):
     apify_token: SecretStr
     deepseek_api_key: SecretStr

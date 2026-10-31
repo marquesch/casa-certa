@@ -59,3 +59,61 @@ def test_an_unknown_source_name_prints_an_error_and_exits_with_2(
     assert main(["run", str(trip_file), "--dry-run"]) == 2
 
     assert "error: Unknown price source bogus" in capsys.readouterr().err
+
+
+SITE_TRIP = "urls: [https://www.airbnb.com.br/rooms/1]\ncheck_in: 2026-12-05\ncheck_out: 2026-12-09\n"
+
+
+def site_environment(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    trip_file = tmp_path / "trip.yaml"
+    trip_file.write_text(SITE_TRIP, encoding="utf8")
+    monkeypatch.chdir(tmp_path)  # so that no real .env is read
+    monkeypatch.setenv("DATABASE_URL", f"sqlite+aiosqlite:///{tmp_path / 'test.db'}")
+    monkeypatch.delenv("SITE_PASSPHRASE", raising=False)
+    return trip_file
+
+
+def test_parser_reads_the_site_commands() -> None:
+    parser = build_parser()
+    site = parser.parse_args(["site", "trip.yaml", "--output-dir", "out"])
+    assert (site.command, site.trip_file, site.output_dir) == ("site", Path("trip.yaml"), Path("out"))
+    assert parser.parse_args(["site", "trip.yaml"]).output_dir == Path("site")
+    publish = parser.parse_args(["publish", "--dir", "out", "--yes"])
+    assert (publish.command, publish.site_dir, publish.yes) == ("publish", Path("out"), True)
+    assert parser.parse_args(["publish"]).site_dir == Path("site")
+    assert parser.parse_args(["passphrase"]).command == "passphrase"
+
+
+def test_passphrase_prints_five_words(capsys: pytest.CaptureFixture[str]) -> None:
+    assert main(["passphrase"]) == 0
+    assert len(capsys.readouterr().out.split()[0].split("-")) == 5
+
+
+def test_site_without_a_passphrase_explains_how_to_set_one(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    trip_file = site_environment(tmp_path, monkeypatch)
+    assert main(["site", str(trip_file)]) == 2
+    assert "SITE_PASSPHRASE" in capsys.readouterr().err
+
+
+def test_site_with_a_weak_passphrase_is_refused(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    trip_file = site_environment(tmp_path, monkeypatch)
+    monkeypatch.setenv("SITE_PASSPHRASE", "casa2026")
+    assert main(["site", str(trip_file)]) == 2
+    assert "passphrase" in capsys.readouterr().err
+    assert not (tmp_path / "site").exists()
+
+
+def test_site_builds_from_an_empty_database(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    trip_file = site_environment(tmp_path, monkeypatch)
+    monkeypatch.setenv("SITE_PASSPHRASE", "cavalo-nuvem-tijolo-lampada-rio")
+
+    assert main(["site", str(trip_file)]) == 0
+
+    assert (tmp_path / "site" / "index.html").is_file()
+    assert "site/index.html" in capsys.readouterr().out

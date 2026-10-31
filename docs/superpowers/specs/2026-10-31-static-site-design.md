@@ -70,8 +70,8 @@ New package `casa_certa/web/`, one job per file:
 New dependencies: `jinja2`, `cryptography`. The new `Labels` fields (site texts) are added for every language already
 in `i18n.py`.
 
-`cli.py` gets the three subcommands. `site` needs a read-only repository query for the trip's houses; it never starts
-the pipeline.
+`cli.py` gets the three subcommands. `site` reads the houses with the existing `HouseRepository.all()` and filters to the
+trip's listings in `build_site`; it never starts the pipeline.
 
 ## The page
 
@@ -158,7 +158,7 @@ No network and no paid calls.
   as in `test_migrations.py`; the existing prompt-hash tests updated.
 - `web/model.py`: section membership (partial, unknown and unmet all go to section 2), sort order by default (cheapest
   per person at the largest size, unavailable last, rating tie-break), city parsing ("City, State, Brasil" gives
-  "City"; missing location gives a fallback label), failed or unanalyzed listings, the not-available price case.
+  "City"; missing location gives no city (shown as n/d)), failed or unanalyzed listings, the not-available price case.
 - `web/render.py`: rendering a fixture house gives a page with all aspects, the `data-*` attributes and the details;
   the page contains no secret and no `.env` value.
 - `web/crypto.py`: round trip, wrong passphrase, tampered payload, weak-passphrase refusal, distinct output on each

@@ -75,6 +75,23 @@ Apify actors sit behind swappable price and review sources, chosen in `.env` as 
   price for 11 guests), asserts they agree and prints a comparison table. It costs a few cents; run it if you suspect an
   actor changed.
 
+## Website
+
+`make site` builds an encrypted, mobile-first page from the stored data (no network, no cost) into `site/`, and
+`make publish` force-pushes it as a single commit to the `gh-pages` branch of `origin`. The page is encrypted with a
+shared passphrase because GitHub Pages is public: anyone with the link sees only ciphertext until they type it.
+
+```bash
+make passphrase          # print a random 5-word passphrase; put it in .env as SITE_PASSPHRASE
+make run                 # fetch and analyze as usual
+make site && make publish
+```
+
+One-time: in the repository settings, Pages, deploy from the `gh-pages` branch (root). Then share the URL and the
+passphrase with the group. The page has two sections (houses with every must-have, and the others) and filters for
+group size, price per person, city, distance to the beach and required aspects, plus sorting. There is no revocation:
+to cut someone off, change `SITE_PASSPHRASE` and publish again. Never commit `site/`.
+
 ## Development
 
 ```bash
