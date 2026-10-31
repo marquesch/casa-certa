@@ -1,0 +1,135 @@
+{% macro status_icon(aspect) -%}
+<span class="icon" aria-hidden="true">{{ statuses[aspect.status.value][0] }}</span><span class="sr">{{ statuses[aspect.status.value][1] }}</span>
+{%- endmacro %}
+
+{% macro card(c, show_missing) %}
+<article class="card{% if not c.analysed %} pending{% endif %}" data-city="{{ c.city or '' }}" data-rating="{{ '' if c.rating is none else c.rating }}" data-reviews="{{ '' if c.review_count is none else c.review_count }}" data-beach="{{ '' if c.beach_distance_m is none else c.beach_distance_m }}"{% for p in c.prices %} data-price{{ p.people }}="{{ '' if p.per_person_cents is none else p.per_person_cents }}"{% endfor %} data-met="{{ c.met_indexes | join(' ') }}">
+  <h3><a href="{{ c.url }}" rel="noopener">{{ c.name }}</a></h3>
+  {% if not c.analysed %}
+  <p class="muted">{{ labels.no_analysis }}</p>
+  {% else %}
+  <p class="facts">
+    {% if c.rating is not none %}★ {{ c.rating }}{% if c.review_count is not none %} ({{ c.review_count }}){% endif %}{% else %}{{ labels.not_available }}{% endif %}
+    · {{ c.city or labels.not_available }}
+  </p>
+  <p class="facts">{{ labels.beach }}:
+    {% if c.beach_distance_m is none %}{{ labels.not_available }}{% else %}{{ c.beach_distance_m | distance }} <span class="muted">({{ labels.estimated }})</span>{% endif %}
+  </p>
+  <p class="price">{{ labels.per_person }}: <strong class="price-now" data-na="{{ labels.not_available }}">{% set cents = c.per_person_cents(site.max_people) %}{{ (cents | brl) if cents is not none else labels.not_available }}</strong></p>
+  <ul class="aspects">
+    {% for a in c.aspects %}
+    <li class="{{ a.status.value }}">{{ status_icon(a) }} {% if a.must_have %}<span title="{{ labels.must_have }}">★</span> {% endif %}{{ a.name }}</li>
+    {% endfor %}
+  </ul>
+  {% if show_missing and c.missing_must_haves %}
+  <p class="missing">{{ labels.missing }}:
+    {% for a in c.missing_must_haves %}{{ statuses[a.status.value][0] }} {{ a.name }} ({{ statuses[a.status.value][1] }}){% if not loop.last %}; {% endif %}{% endfor %}
+  </p>
+  {% endif %}
+  <details class="more">
+    <summary>{{ labels.details }}</summary>
+    {% if c.summary %}<p><strong>{{ labels.summary }}:</strong> {{ c.summary }}</p>{% endif %}
+    {% if c.confidence_note %}<p><strong>{{ labels.confidence }}:</strong> {{ c.confidence_note }}</p>{% endif %}
+    {% if c.extra %}<p><strong>{{ labels.extra }}:</strong> {{ c.extra }}</p>{% endif %}
+    {% if c.pros %}<h4>{{ labels.pros }}</h4><ul>{% for text in c.pros %}<li>{{ text }}</li>{% endfor %}</ul>{% endif %}
+    {% if c.cons %}<h4>{{ labels.cons }}</h4><ul>{% for text in c.cons %}<li>{{ text }}</li>{% endfor %}</ul>{% endif %}
+    {% if c.beach_distance_quote %}<p><strong>{{ labels.beach }}:</strong> <q>{{ c.beach_distance_quote }}</q> <span class="muted">[{{ source_texts[c.beach_distance_source.value] }}]</span></p>{% endif %}
+    <h4>{{ labels.aspect }}</h4>
+    {% for a in c.aspects %}
+    <div class="verdict">
+      <p><strong>{{ status_icon(a) }} {% if a.must_have %}★ {% endif %}{{ a.name }}</strong>{% if a.reason %} — {{ a.reason }}{% endif %}</p>
+      {% for e in a.evidence %}<blockquote>[{{ source_texts[e.source.value] }}] “{{ e.quote }}”</blockquote>{% endfor %}
+    </div>
+    {% endfor %}
+    {% if c.prices %}
+    <h4>{{ labels.prices }}</h4>
+    <table>
+      <thead><tr><th>{{ labels.people }}</th><th>{{ labels.total }}</th><th>{{ labels.per_person }}</th>{% if c.has_original_price %}<th>{{ labels.original_price }}</th>{% endif %}</tr></thead>
+      <tbody>
+        {% for row in c.prices %}
+        <tr>
+          <td>{{ row.people }}</td>
+          <td>{{ (row.total_cents | brl) if row.total_cents is not none else labels.not_available }}</td>
+          <td>{{ (row.per_person_cents | brl) if row.per_person_cents is not none else labels.not_available }}</td>
+          {% if c.has_original_price %}<td>{{ (row.original_total_cents | brl) if row.original_total_cents is not none else '' }}</td>{% endif %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <p class="muted">{{ price_basis }}</p>
+    {% endif %}
+    <p><a href="{{ c.url }}" rel="noopener">{{ labels.open_listing }} ↗</a></p>
+  </details>
+  {% endif %}
+</article>
+{% endmacro %}
+
+{% macro group(id, title, cards, show_missing) %}
+<section class="group" id="{{ id }}">
+  <h2>{{ title }} <span class="count">({{ cards | length }} {{ labels.count_of }} {{ cards | length }})</span></h2>
+  <div class="cards">{% for c in cards %}{{ card(c, show_missing) }}{% endfor %}</div>
+  <p class="empty muted"{% if cards %} hidden{% endif %}>{{ labels.no_matches }}</p>
+</section>
+{% endmacro %}
+<!doctype html>
+<html lang="{{ language }}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>{{ labels.site_title }}</title>
+<style>{{ css }}</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>{{ labels.site_title }}</h1>
+    <p class="muted">{{ trip_line }}{% if updated %} · {{ updated }}{% endif %}</p>
+    <p class="muted">{{ price_basis }}</p>
+  </header>
+
+  <details class="filters" id="filters">
+    <summary>{{ labels.filters }}</summary>
+    <div class="filter-grid">
+      <label>{{ labels.group_size }}
+        <select id="f-size" data-default="{{ site.max_people }}">
+          {% for n in site.sizes %}<option value="{{ n }}"{% if n == site.max_people %} selected{% endif %}>{{ n }}</option>{% endfor %}
+        </select>
+      </label>
+      <label>{{ labels.price_range }}
+        <span class="pair">
+          <input id="f-min" type="number" inputmode="decimal" min="0" step="any" placeholder="{{ labels.price_min }}">
+          <input id="f-max" type="number" inputmode="decimal" min="0" step="any" placeholder="{{ labels.price_max }}">
+        </span>
+      </label>
+      <label>{{ labels.beach_distance }}
+        <select id="f-beach">
+          <option value="">{{ labels.beach_any }}</option>
+          {% for meters, text in beach_bands %}<option value="{{ meters }}">{{ text }}</option>{% endfor %}
+        </select>
+      </label>
+      <label>{{ labels.sort_by }}
+        <select id="f-sort">
+          <option value="price">{{ labels.sort_price }}</option>
+          <option value="rating">{{ labels.sort_rating }}</option>
+          <option value="beach">{{ labels.sort_beach }}</option>
+        </select>
+      </label>
+      {% if site.cities %}
+      <fieldset><legend>{{ labels.city }}</legend>
+        {% for city in site.cities %}<label class="check"><input type="checkbox" name="city" value="{{ city }}"> {{ city }}</label>{% endfor %}
+      </fieldset>
+      {% endif %}
+      <fieldset><legend>{{ labels.aspects_filter }}</legend>
+        {% for a in site.aspects %}<label class="check"><input type="checkbox" name="aspect" value="{{ loop.index0 }}"> {% if a.must_have %}★ {% endif %}{{ a.name }}</label>{% endfor %}
+      </fieldset>
+    </div>
+    <button type="button" id="f-clear">{{ labels.clear_filters }}</button>
+  </details>
+
+  {{ group("complete", labels.section_complete, site.complete, false) }}
+  {{ group("incomplete", labels.section_incomplete, site.incomplete, true) }}
+</main>
+<script>{{ script }}</script>
+</body>
+</html>
