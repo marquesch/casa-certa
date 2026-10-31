@@ -11,7 +11,6 @@ from casa_certa.config import AspectKind, TripConfig
 from casa_certa.db.models import House
 from casa_certa.enums import AspectStatus, EvidenceSource, PointKind
 from casa_certa.i18n import Labels, labels_for
-from casa_certa.names import normalize_name
 from casa_certa.pricing import PriceRow, SizeQuote, cents_to_reais, price_table
 from casa_certa.sources.airbnb_page import listing_url
 
@@ -50,12 +49,8 @@ def _append(sheet: Worksheet, values: list[Any], *, bold: bool = False) -> int:
 
 
 def _status(house: House, aspect_name: str) -> AspectStatus:
-    wanted = normalize_name(aspect_name)
-    if house.analysis is not None:
-        for verdict in house.analysis.verdicts:
-            if normalize_name(verdict.aspect_name) == wanted:
-                return verdict.status
-    return AspectStatus.UNKNOWN
+    verdict = house.analysis.verdict_for(aspect_name) if house.analysis else None
+    return verdict.status if verdict else AspectStatus.UNKNOWN
 
 
 def _dealbreakers(house: House, trip: TripConfig) -> list[str]:

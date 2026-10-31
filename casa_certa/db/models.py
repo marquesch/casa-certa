@@ -10,6 +10,7 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 from casa_certa.config import TripConfig
 from casa_certa.enums import AspectStatus, EvidenceSource, PointKind, RuleKind
+from casa_certa.names import normalize_name
 
 
 def utcnow() -> datetime:
@@ -186,6 +187,18 @@ class Analysis(Base):
     confidence_note: Mapped[str | None] = mapped_column(Text)
     model: Mapped[str] = mapped_column(String(64))
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    beach_distance_m: Mapped[int | None] = mapped_column(Integer)
+    beach_distance_source: Mapped[EvidenceSource | None] = mapped_column(
+        Enum(
+            EvidenceSource,
+            native_enum=False,
+            length=16,
+            create_constraint=True,
+            name="ck_analysis_beach_distance_source",
+            values_callable=lambda members: [member.value for member in members],
+        )
+    )
+    beach_distance_quote: Mapped[str | None] = mapped_column(Text)
 
     verdicts: Mapped[list[AspectVerdict]] = relationship(
         cascade="all, delete-orphan", lazy="selectin", order_by="AspectVerdict.id"
@@ -193,6 +206,11 @@ class Analysis(Base):
     points: Mapped[list[AnalysisPoint]] = relationship(
         cascade="all, delete-orphan", lazy="selectin", order_by="AnalysisPoint.id"
     )
+
+    def verdict_for(self, aspect_name: str) -> AspectVerdict | None:
+        """The verdict for an aspect, matched ignoring case and spacing."""
+        wanted = normalize_name(aspect_name)
+        return next((v for v in self.verdicts if normalize_name(v.aspect_name) == wanted), None)
 
 
 class AspectVerdict(Base):

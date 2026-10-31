@@ -165,11 +165,15 @@ class HouseRepository:
             AnalysisPoint(kind=PointKind.CON, text=text, position=position)
             for position, text in enumerate(analysis.cons)
         ]
+        evidence = analysis.beach_distance_evidence if analysis.beach_distance_m is not None else None
         house.analysis = Analysis(
             input_hash=input_hash,
             summary=analysis.summary,
             confidence_note=analysis.confidence_note,
             model=model,
+            beach_distance_m=analysis.beach_distance_m,
+            beach_distance_source=evidence.source if evidence else None,
+            beach_distance_quote=evidence.quote if evidence else None,
             verdicts=[
                 AspectVerdict(
                     aspect_name=verdict.aspect,

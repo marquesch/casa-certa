@@ -64,3 +64,33 @@ def test_upgrade_keeps_an_old_quote_with_guests_as_adults_plus_children(
     with sqlite3.connect(database) as connection:
         row = connection.execute("SELECT adults, children, total_cents FROM price_quote").fetchone()
     assert row == (11, 0, 367500)
+
+
+def test_beach_distance_columns_are_added_and_removed(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    database = tmp_path / "old.db"
+    monkeypatch.setenv("DATABASE_URL", f"sqlite+aiosqlite:///{database}")
+    config = Config(str(ROOT / "alembic.ini"))
+    command.upgrade(config, "da6f61dd4ee4")
+    with sqlite3.connect(database) as connection:
+        connection.execute(
+            "INSERT INTO house (id, airbnb_id, name, extra, created_at, updated_at)"
+            " VALUES (1, '1', 'Casa', '', '2026-10-01', '2026-10-01')"
+        )
+        connection.execute(
+            "INSERT INTO analysis (house_id, input_hash, summary, model, created_at)"
+            " VALUES (1, 'h', 'ok', 'm', '2026-10-01')"
+        )
+
+    command.upgrade(config, "head")
+
+    with sqlite3.connect(database) as connection:
+        row = connection.execute(
+            "SELECT summary, beach_distance_m, beach_distance_source, beach_distance_quote FROM analysis"
+        ).fetchone()
+    assert row == ("ok", None, None, None)
+
+    command.downgrade(config, "da6f61dd4ee4")
+
+    with sqlite3.connect(database) as connection:
+        columns = [row[1] for row in connection.execute("PRAGMA table_info(analysis)")]
+    assert "beach_distance_m" not in columns

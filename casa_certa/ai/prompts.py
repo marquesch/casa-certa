@@ -34,6 +34,10 @@ in confidence_note. Review dates are absolute; judge their age relative to the n
 - Guest reviews are mostly in Portuguese. Quote them verbatim in their original language; write everything else in \
 the output language.
 - Pros and cons must be concrete and relevant for a group of that size.
+- beach_distance_m is the walking distance in meters from the house to the nearest beach: 0 for beachfront \
+("pé na areia", "frente ao mar"), kilometers converted to meters. Use null when neither the listing nor the reviews \
+give or clearly imply a distance; never guess. Reviews override the listing. Set beach_distance_evidence to a short \
+verbatim quote the number is based on; it is required whenever beach_distance_m is set.
 - Write every free-text field (reason, pros, cons, summary, confidence_note) in {trip.language}. Keep JSON keys and \
 enum values in English."""
 
