@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="{{ language }}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>{{ labels.site_title }}</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { margin: 0; min-height: 100vh; display: grid; place-items: center; font: 16px/1.45 system-ui, sans-serif; }
+  form { width: min(22rem, 92vw); display: grid; gap: .75rem; }
+  h1 { font-size: 1.3rem; margin: 0; }
+  input[type="password"], button { font: inherit; padding: .65rem; min-height: 2.75rem; }
+  label.check { display: flex; gap: .5rem; align-items: center; }
+  #message { min-height: 1.4rem; margin: 0; color: #c00000; }
+</style>
+</head>
+<body>
+<form id="unlock">
+  <h1>{{ labels.unlock_title }}</h1>
+  <input id="passphrase" type="password" autocomplete="current-password" aria-label="{{ labels.passphrase }}" placeholder="{{ labels.passphrase }}" autofocus required>
+  <label class="check"><input id="remember" type="checkbox"> {{ labels.remember }}</label>
+  <button type="submit">{{ labels.unlock_button }}</button>
+  <p id="message" role="alert" data-wrong="{{ labels.wrong_passphrase }}" data-busy="{{ labels.unlocking }}"></p>
+</form>
+<script type="text/plain" id="payload" data-iterations="{{ iterations }}">{{ payload }}</script>
+<script id="unlock-code">{{ code }}</script>
+</body>
+</html>

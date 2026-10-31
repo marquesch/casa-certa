@@ -82,3 +82,12 @@ def render_page(site: SiteModel, trip: TripConfig, labels: Labels) -> str:
             script=Markup(f"{read_static('filters.js')}\n{read_static('site.js')}"),
         )
     )
+
+
+def render_shell(payload: str, iterations: int, labels: Labels, language: str) -> str:
+    """The unencrypted page that holds the ciphertext and the passphrase form."""
+    return (
+        _environment(labels)
+        .get_template("unlock.html.j2")
+        .render(labels=labels, language=language, payload=payload, iterations=iterations, code=read_static("unlock.js"))
+    )
