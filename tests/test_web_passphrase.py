@@ -17,3 +17,8 @@ def test_a_passphrase_has_five_words_from_the_list_and_passes_the_check() -> Non
 
 def test_passphrases_differ() -> None:
     assert generate_passphrase() != generate_passphrase()
+
+
+def test_every_generated_passphrase_passes_the_check() -> None:
+    for _ in range(200):
+        check_passphrase(generate_passphrase())

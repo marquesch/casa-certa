@@ -42,12 +42,31 @@ def test_accents_and_spacing_do_not_change_the_key() -> None:
     assert decrypt(payload, decomposed, iterations=FAST) == f"  {composed}  "
 
 
-@pytest.mark.parametrize("passphrase", ["casa2026", "a-b-c-d-e", "um dois tres quatro", ""])
+@pytest.mark.parametrize(
+    "passphrase",
+    [
+        "casa2026",
+        "a-b-c-d-e",
+        "um dois tres quatro",
+        "the cat dog red sun",
+        "x" * 30,
+        "x" * 100,
+        "abab-abab-abab-abab-abab-abab",
+        "",
+    ],
+)
 def test_weak_passphrases_are_refused(passphrase: str) -> None:
     with pytest.raises(WeakPassphraseError):
         check_passphrase(passphrase)
 
 
-@pytest.mark.parametrize("passphrase", ["cavalo-nuvem-tijolo-lampada-rio", "cavalo nuvem tijolo lampada rio", "x" * 30])
+@pytest.mark.parametrize(
+    "passphrase",
+    [
+        "cavalo-nuvem-tijolo-lampada-rio",
+        "cavalo nuvem tijolo lampada rio",
+        "abcdefghijklmnopqrstuvwxyz0123456789ABCD",
+    ],
+)
 def test_strong_enough_passphrases_are_accepted(passphrase: str) -> None:
     check_passphrase(passphrase)

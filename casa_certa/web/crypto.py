@@ -19,7 +19,9 @@ IV_BYTES = 12
 KEY_BYTES = 32
 MIN_WORDS = 5
 MIN_WORD_LENGTH = 3
-MIN_CHARACTERS = 30
+MIN_WORD_CHARACTERS = 20
+MIN_LONG_CHARACTERS = 40
+MIN_DISTINCT = 12
 
 
 class WeakPassphraseError(ValueError):
@@ -36,12 +38,19 @@ def _normalise(passphrase: str) -> str:
 
 
 def check_passphrase(passphrase: str) -> None:
-    """A guard against obviously weak choices (not a proof of strength): five words of 3+ letters or 30+ characters."""
+    """A guard against obviously weak choices, not a measure of strength: it cannot tell a good passphrase from a
+    predictable one (`the-cat-sat-on-mat` would pass). Use the generated one.
+
+    Accepted: five words of 3+ letters, 20+ characters and 12+ distinct characters; or 40+ characters with 12+
+    distinct characters."""
     text = _normalise(passphrase)
     words = [word for word in re.split(r"[-\s]+", text) if len(word) >= MIN_WORD_LENGTH]
-    if len(words) < MIN_WORDS and len(text) < MIN_CHARACTERS:
+    varied = len(set(text)) >= MIN_DISTINCT
+    by_words = len(words) >= MIN_WORDS and len(text) >= MIN_WORD_CHARACTERS
+    if not varied or not (by_words or len(text) >= MIN_LONG_CHARACTERS):
         raise WeakPassphraseError(
-            f"The site passphrase needs at least {MIN_WORDS} words or {MIN_CHARACTERS} characters. "
+            f"The site passphrase needs at least {MIN_WORDS} words ({MIN_WORD_CHARACTERS}+ characters) or "
+            f"{MIN_LONG_CHARACTERS}+ characters, with {MIN_DISTINCT}+ different characters. "
             "Run `make passphrase` to generate one."
         )
 

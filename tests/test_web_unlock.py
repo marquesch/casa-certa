@@ -26,9 +26,9 @@ def build_shell(tmp_path: Path, payload: str | None = None) -> Path:
     return path
 
 
-def unlock(shell: Path, passphrase: str, remember: bool = False) -> dict[str, object]:
+def unlock(shell: Path, passphrase: str, remember: bool = False, *flags: str) -> dict[str, object]:
     result = subprocess.run(
-        ["node", str(RUNNER), str(shell), passphrase, "remember" if remember else "-"],
+        ["node", str(RUNNER), str(shell), passphrase, "remember" if remember else "-", *flags],
         capture_output=True,
         text=True,
         check=True,
@@ -73,3 +73,28 @@ def test_the_passphrase_is_stored_only_when_asked(tmp_path: Path) -> None:
     shell = build_shell(tmp_path)
     assert unlock(shell, PASSPHRASE, remember=True)["stored"] == ["casa-certa-passphrase"]
     assert unlock(shell, PASSPHRASE, remember=False)["stored"] == []
+
+
+def test_a_double_submit_writes_the_page_only_once(tmp_path: Path) -> None:
+    result = unlock(build_shell(tmp_path), PASSPHRASE, False, "--double")
+    assert result == {"written": [PAGE], "message": "", "stored": []}
+
+
+def test_the_saved_passphrase_unlocks_automatically_and_is_kept(tmp_path: Path) -> None:
+    result = unlock(build_shell(tmp_path), "-", False, f"--saved={PASSPHRASE}")
+    assert result == {"written": [PAGE], "message": "", "stored": ["casa-certa-passphrase"]}
+
+
+def test_a_saved_wrong_passphrase_is_removed_after_the_failed_auto_unlock(tmp_path: Path) -> None:
+    result = unlock(build_shell(tmp_path), "-", False, "--saved=outra-senha-qualquer-aqui-sim")
+    assert result["written"] == [] and result["stored"] == []
+
+
+def test_a_saved_passphrase_is_kept_when_the_failure_is_not_a_wrong_passphrase(tmp_path: Path) -> None:
+    result = unlock(build_shell(tmp_path), "-", False, f"--saved={PASSPHRASE}", "--no-subtle")
+    assert result["written"] == [] and result["stored"] == ["casa-certa-passphrase"]
+
+
+def test_without_webcrypto_a_manual_submit_shows_the_wrong_passphrase_message(tmp_path: Path) -> None:
+    result = unlock(build_shell(tmp_path), PASSPHRASE, False, "--no-subtle")
+    assert result == {"written": [], "message": "WRONG", "stored": []}

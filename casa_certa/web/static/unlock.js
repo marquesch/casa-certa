@@ -28,31 +28,40 @@
     return new TextDecoder().decode(await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, data));
   }
 
+  // True while an attempt runs and after one succeeds, so the saved passphrase and a manual submit can never both
+  // reach document.write (a second write would redeclare the page's top-level consts and break it).
+  let unlocking = false;
+
+  // "opened", "wrong" (the GCM check failed: wrong passphrase or modified payload) or "failed" (anything else, such as
+  // WebCrypto being unavailable outside a secure context).
   async function unlock(passphrase, store) {
+    unlocking = true;
     let html;
     try {
       html = await decrypt(passphrase);
     } catch (error) {
-      return false;
+      unlocking = false;
+      return error && error.name === "OperationError" ? "wrong" : "failed";
     }
     if (store) localStorage.setItem(STORAGE_KEY, passphrase);
     document.open();
     document.write(html);
     document.close();
-    return true;
+    return "opened";
   }
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
+    if (unlocking) return;
     message.textContent = message.dataset.busy;
-    const opened = await unlock(input.value, remember.checked);
-    message.textContent = opened ? "" : message.dataset.wrong;
+    const result = await unlock(input.value, remember.checked);
+    message.textContent = result === "opened" ? "" : message.dataset.wrong;
   });
 
   const saved = localStorage.getItem(STORAGE_KEY);
   if (saved) {
-    unlock(saved, false).then((opened) => {
-      if (!opened) localStorage.removeItem(STORAGE_KEY);
+    unlock(saved, false).then((result) => {
+      if (result === "wrong") localStorage.removeItem(STORAGE_KEY);
     });
   }
 })();
