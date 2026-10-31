@@ -1,0 +1,23 @@
+# Copy this file to trip.yaml (which is gitignored) and edit it:  cp trip.example.yaml trip.yaml
+urls:
+  - https://www.airbnb.com.br/rooms/12345678
+  - https://www.airbnb.com.br/rooms/87654321
+check_in: 2027-01-10
+check_out: 2027-01-14
+# Group sizes to price: paying guests (adults + children). Infants do not count and are passed as a fixed number.
+min_people: 4
+max_people: 6
+infants: 0
+language: pt-BR
+review_cap: 30
+aspects:
+  - name: Perto da praia
+    kind: must_have
+    details: Ideal a poucos minutos a pé; considere o que dizem as avaliações.
+  - name: Ar-condicionado em todos os quartos
+    kind: nice_to_have
+  - name: Piscina
+    kind: nice_to_have
+# What you know about a house (for example from the photos), keyed by listing URL or id.
+# A changed note makes only that house be analysed again.
+notes: {}

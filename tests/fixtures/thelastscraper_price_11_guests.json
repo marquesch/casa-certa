@@ -1,0 +1,122 @@
+[
+ {
+  "listing_id": "46397403",
+  "url": "https://www.airbnb.com/rooms/46397403",
+  "price": {
+   "currency": "BRL",
+   "check_in": "2026-12-05",
+   "check_out": "2026-12-09",
+   "nights": 4,
+   "adults": 10,
+   "children": 1,
+   "infants": 1,
+   "pets": 0,
+   "dates_match_query": true,
+   "quote_source": "pdp_quote",
+   "display_style": "TOTAL_ONLY",
+   "display_qualifier": "for 4 nights",
+   "is_available": true,
+   "unavailable_reason": null,
+   "unavailable_message": null,
+   "nightly_rate": 918.75,
+   "nightly_rate_original": null,
+   "subtotal_nights": 3675,
+   "discounts_total": 0,
+   "fees_total": null,
+   "taxes_total": null,
+   "total": 3675,
+   "total_original": null,
+   "total_display": 3675,
+   "total_display_original": null,
+   "total_before_taxes": 3675,
+   "price_per_night": 918.75,
+   "price_per_night_before_taxes": 918.75,
+   "price_per_guest_per_night": 76.56,
+   "price_per_bedroom_per_night": 229.69,
+   "discount_pct": null,
+   "line_items": [
+    {
+     "type": "nightly_subtotal",
+     "label": "4 nights x R$918.75",
+     "amount": 3675,
+     "currency": "BRL",
+     "raw": "R$3,675.00"
+    }
+   ],
+   "discounts": [],
+   "fees": [],
+   "taxes": [],
+   "fees_included_in_rate": true,
+   "security_deposit": null,
+   "security_deposit_source": null,
+   "price_drop_notice": null,
+   "payment_badges": [],
+   "free_periods": [],
+   "free_nights_quoted": null,
+   "free_price_per_night": null
+  },
+  "capacity": {
+   "guests": 12
+  }
+ },
+ {
+  "listing_id": "52584351",
+  "url": "https://www.airbnb.com/rooms/52584351",
+  "price": {
+   "currency": "BRL",
+   "check_in": "2026-12-05",
+   "check_out": "2026-12-09",
+   "nights": 4,
+   "adults": 10,
+   "children": 1,
+   "infants": 1,
+   "pets": 0,
+   "dates_match_query": true,
+   "quote_source": "pdp_quote",
+   "display_style": "REGULATED_TOTAL",
+   "display_qualifier": "total",
+   "is_available": true,
+   "unavailable_reason": null,
+   "unavailable_message": null,
+   "nightly_rate": 922.75,
+   "nightly_rate_original": 996.13,
+   "subtotal_nights": 3691,
+   "discounts_total": 0,
+   "fees_total": null,
+   "taxes_total": null,
+   "total": 3691,
+   "total_original": null,
+   "total_display": 3691,
+   "total_display_original": 3985,
+   "total_before_taxes": 3691,
+   "price_per_night": 922.75,
+   "price_per_night_before_taxes": 922.75,
+   "price_per_guest_per_night": 57.67,
+   "price_per_bedroom_per_night": 153.79,
+   "discount_pct": 0.0738,
+   "line_items": [
+    {
+     "type": "nightly_subtotal",
+     "label": "4 nights x R$922.75",
+     "amount": 3691,
+     "currency": "BRL",
+     "raw": "R$3,691.00"
+    }
+   ],
+   "discounts": [],
+   "fees": [],
+   "taxes": [],
+   "fees_included_in_rate": true,
+   "security_deposit": null,
+   "security_deposit_source": null,
+   "price_drop_notice": "Anfitriao B recently lowered the price for these dates (from the average rate for the past 60 nights).",
+   "payment_badges": [],
+   "free_periods": [],
+   "free_nights_quoted": null,
+   "free_price_per_night": null
+  },
+  "capacity": {
+   "guests": 16
+  }
+ }
+]

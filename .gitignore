@@ -1,0 +1,11 @@
+.env
+__pycache__/
+.venv/
+*.db
+*.db-journal
+*.xlsx
+.env.*
+!.env.example
+
+# Your trip: personal, never commit it. Copy trip.example.yaml to trip.yaml and edit.
+trip.yaml

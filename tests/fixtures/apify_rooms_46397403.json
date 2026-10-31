@@ -1,0 +1,437 @@
+[
+ {
+  "id": "46397403",
+  "coordinates": {
+   "latitude": -25.74,
+   "longitude": -48.49
+  },
+  "descriptionOriginalLanguage": "pt",
+  "metaDescription": "31 de out. de 2026 · Espaço inteiro: casa · A CASA CONTÉM: 4 Quartos (2 Suites, 1 Quarto com 1 Beliche e 01 Quarto com Cama de Casal e Bicama) 5 banheiros (2 das suites, 1 no andar de cima, 1...",
+  "seoTitle": "Sobrado Praia Albatroz, 100 metros do mar, Piscina - Casas para Alugar em Matinhos, Paraná, Brasil - Airbnb",
+  "sharingConfigTitle": "Casa · Matinhos · ★4,95 · 4 quartos · 9 camas · 5 banheiros",
+  "url": "https://pt.airbnb.com/rooms/46397403?locale=pt-BR&currency=BRL&adults=10&children=1&infants=1&check_in=2026-12-05&check_out=2026-12-09",
+  "propertyType": "Espaço inteiro: casa",
+  "roomType": "Entire home/apt",
+  "homeTier": 1,
+  "personCapacity": 12,
+  "rating": {
+   "accuracy": 4.99,
+   "checking": 4.99,
+   "cleanliness": 4.85,
+   "communication": 4.99,
+   "location": 4.97,
+   "value": 4.97,
+   "guestSatisfaction": 4.95,
+   "reviewsCount": 87
+  },
+  "location": "Matinhos",
+  "host": {
+   "id": "0",
+   "name": "Anfitriao A",
+   "profileImage": "https://example.invalid/photo.jpg",
+   "isSuperHost": true,
+   "isVerified": true,
+   "highlights": [
+    "Nasci na década de 80",
+    "Idiomas: português"
+   ],
+   "about": "",
+   "ratingCount": 87,
+   "ratingAverage": 4.95,
+   "hostDetails": [
+    "Taxa de resposta: 100%",
+    "Responde em até 1 hora"
+   ],
+   "timeAsHost": {
+    "months": 11,
+    "years": 5
+   }
+  },
+  "coHosts": [],
+  "locationSubtitle": "Matinhos, Paraná, Brasil",
+  "locationDescriptions": [
+   {
+    "title": "Matinhos, Paraná, Brasil",
+    "content": null
+   }
+  ],
+  "title": "Sobrado Praia Albatroz, 100 metros do mar, Piscina",
+  "description": "A CASA CONTÉM:4 Quartos (2 Suites, 1 Quarto com 1 Beliche e 01 Quarto com Cama de Casal e Bicama)5 banheiros (2 das suites, 1 no andar de cima, 1 no andar de baixo e 1 na churrasqueira)03 Salas (Estar no andar de cima, Estar e Jantar no andar de baixo)CozinhaPiscinaChurrasqueiraWiFiEspreguiçadeiras e redes de descanso100 metros do marGaragem para 3 carros",
+  "subDescription": {
+   "title": "Espaço inteiro: casa em Matinhos, Brasil",
+   "items": [
+    "12 hóspedes",
+    "4 quartos",
+    "9 camas",
+    "5 banheiros"
+   ]
+  },
+  "isAvailable": true,
+  "price": {
+   "label": "R$ 3.675 por 4 noites",
+   "qualifier": "por 4 noites",
+   "price": "R$ 3.675",
+   "originalPrice": null,
+   "discountedPrice": null,
+   "breakDown": {
+    "basePrice": {
+     "description": "4 noites x R$ 918,75",
+     "price": "R$ 3.675,00"
+    },
+    "basePriceBreakdown": [],
+    "serviceFee": null,
+    "taxes": null,
+    "total": null,
+    "totalBeforeTaxes": null,
+    "cleaningFee": null,
+    "specialOffer": null,
+    "earlyBirdDiscount": null
+   }
+  },
+  "brandHighlights": {
+   "subtitle": null,
+   "hasGoldenLaurel": null
+  },
+  "breadcrumbs": [
+   {
+    "linkRoute": "/",
+    "linkText": "Airbnb",
+    "searchText": "Airbnb"
+   },
+   {
+    "linkRoute": "/brazil/stays",
+    "linkText": "Brasil",
+    "searchText": "Brasil"
+   },
+   {
+    "linkRoute": "/south-region-brazil/stays",
+    "linkText": "Região Sul do Brasil",
+    "searchText": "Região Sul do Brasil"
+   }
+  ],
+  "highlights": [
+   {
+    "title": "No top 10% das acomodações",
+    "subtitle": "Esta acomodação é muito bem classificada com base em avaliações, comentários e confiabilidade.",
+    "icon": "SYSTEM_GOLDEN_TROPHY",
+    "type": "LISTING_GUEST_FAVORITE"
+   },
+   {
+    "title": "Comodidades ao ar livre",
+    "subtitle": "As viagens de verão ficam ainda melhores com a piscina, área para refeições ao ar livre, área para churrasco e lugar para sentar fora.",
+    "icon": "SYSTEM_FIREPIT",
+    "type": "LISTING_SUMMER_OUTDOOR_ENTERTAINMENT"
+   },
+   {
+    "title": "Experiência de check-in excepcional",
+    "subtitle": "Hóspedes recentes deram 5 estrelas para o processo de check-in.",
+    "icon": "SYSTEM_KEY",
+    "type": "LISTING_CHECKIN_REVIEW_RATING"
+   }
+  ],
+  "houseRules": {
+   "general": []
+  },
+  "cancellationPolicies": [],
+  "amenities": [
+   {
+    "title": "Banheiro",
+    "values": [
+     {
+      "title": "Produtos de limpeza",
+      "subtitle": "",
+      "icon": "SYSTEM_CLEANING_SUPPLIES",
+      "available": true
+     },
+     {
+      "title": "Sabonete para o corpo",
+      "subtitle": "",
+      "icon": "SYSTEM_SOAP",
+      "available": true
+     },
+     {
+      "title": "Chuveiro externo",
+      "subtitle": "",
+      "icon": "SYSTEM_SHOWER",
+      "available": true
+     },
+     {
+      "title": "Água quente",
+      "subtitle": "",
+      "icon": "SYSTEM_HOT_WATER",
+      "available": true
+     }
+    ]
+   },
+   {
+    "title": "Quarto e lavanderia",
+    "values": [
+     {
+      "title": "Cabides",
+      "subtitle": "",
+      "icon": "SYSTEM_HANGERS",
+      "available": true
+     },
+     {
+      "title": "Local para guardar as roupas: guarda-roupa e cômoda",
+      "subtitle": "",
+      "icon": "SYSTEM_WARDROBE",
+      "available": true
+     }
+    ]
+   },
+   {
+    "title": "Entretenimento",
+    "values": [
+     {
+      "title": "Conexão Ethernet",
+      "subtitle": "",
+      "icon": "SYSTEM_CABLE",
+      "available": true
+     },
+     {
+      "title": "TV",
+      "subtitle": "",
+      "icon": "SYSTEM_TV",
+      "available": true
+     }
+    ]
+   },
+   {
+    "title": "Climatização",
+    "values": [
+     {
+      "title": "Ventilador de teto",
+      "subtitle": "",
+      "icon": "SYSTEM_FAN_CEILING",
+      "available": true
+     }
+    ]
+   },
+   {
+    "title": "Segurança doméstica",
+    "values": [
+     {
+      "title": "Câmeras de segurança na parte externa da propriedade",
+      "subtitle": "",
+      "icon": "SYSTEM_SURVEILLANCE",
+      "available": true
+     }
+    ]
+   },
+   {
+    "title": "Internet e escritório",
+    "values": [
+     {
+      "title": "Wi-Fi",
+      "subtitle": "",
+      "icon": "SYSTEM_WI_FI",
+      "available": true
+     }
+    ]
+   },
+   {
+    "title": "Cozinha e sala de jantar",
+    "values": [
+     {
+      "title": "Cozinha",
+      "subtitle": "Espaço onde os hóspedes podem preparar suas próprias refeições",
+      "icon": "SYSTEM_COOKING_BASICS",
+      "available": true
+     },
+     {
+      "title": "Refrigerador",
+      "subtitle": "",
+      "icon": "SYSTEM_REFRIGERATOR",
+      "available": true
+     },
+     {
+      "title": "Micro-ondas",
+      "subtitle": "",
+      "icon": "SYSTEM_MICROWAVE",
+      "available": true
+     },
+     {
+      "title": "Itens básicos de cozinha",
+      "subtitle": "Vasilhas, panelas, óleo, sal e pimenta",
+      "icon": "SYSTEM_COOKING_BASICS",
+      "available": true
+     },
+     {
+      "title": "Pratos e talheres",
+      "subtitle": "Pratos, tigelas, copos, talheres e outros utensílios",
+      "icon": "SYSTEM_DISHES_AND_SILVERWARE",
+      "available": true
+     },
+     {
+      "title": "Freezer",
+      "subtitle": "",
+      "icon": "SYSTEM_REFRIGERATOR",
+      "available": true
+     },
+     {
+      "title": "Forno",
+      "subtitle": "",
+      "icon": "SYSTEM_OVEN",
+      "available": true
+     },
+     {
+      "title": "Utensílios para churrasco",
+      "subtitle": "Combustível (por exemplo, carvão) e utensílios utilizados para grelhar alimentos",
+      "icon": "SYSTEM_GRILL",
+      "available": true
+     },
+     {
+      "title": "Mesa de jantar",
+      "subtitle": "",
+      "icon": "SYSTEM_DINING_TABLE",
+      "available": true
+     }
+    ]
+   },
+   {
+    "title": "Características da localização",
+    "values": [
+     {
+      "title": "Entrada privada",
+      "subtitle": "Entrada por outra rua ou prédio",
+      "icon": "SYSTEM_DOOR",
+      "available": true
+     }
+    ]
+   },
+   {
+    "title": "Ar livre",
+    "values": [
+     {
+      "title": "Pátio ou varanda (Privativa)",
+      "subtitle": "",
+      "icon": "SYSTEM_PATIO_BALCONY",
+      "available": true
+     },
+     {
+      "title": "Quintal privado — totalmente cercado",
+      "subtitle": "Um espaço aberto da propriedade, geralmente coberto de grama",
+      "icon": "SYSTEM_FLOWER",
+      "available": true
+     },
+     {
+      "title": "Móveis na área externa",
+      "subtitle": "",
+      "icon": "SYSTEM_ROOFTOP_DECK",
+      "available": true
+     },
+     {
+      "title": "Rede",
+      "subtitle": "",
+      "icon": "SYSTEM_HAMMOCK",
+      "available": true
+     },
+     {
+      "title": "Área de jantar externa",
+      "subtitle": "",
+      "icon": "SYSTEM_ROOFTOP_DECK",
+      "available": true
+     },
+     {
+      "title": "Churrasqueira",
+      "subtitle": "",
+      "icon": "SYSTEM_GRILL",
+      "available": true
+     }
+    ]
+   },
+   {
+    "title": "Estacionamento e instalações",
+    "values": [
+     {
+      "title": "Estacionamento gratuito no local",
+      "subtitle": "",
+      "icon": "SYSTEM_MAPS_CAR_RENTAL",
+      "available": true
+     },
+     {
+      "title": "Piscina privativa",
+      "subtitle": "",
+      "icon": "SYSTEM_POOL",
+      "available": true
+     }
+    ]
+   },
+   {
+    "title": "Serviços",
+    "values": [
+     {
+      "title": "Permitido animais",
+      "subtitle": "Animas de assistência sempre são permitidos",
+      "icon": "SYSTEM_PETS",
+      "available": true
+     },
+     {
+      "title": "Permitido fumar",
+      "subtitle": "",
+      "icon": "SYSTEM_SMOKING_ALLOWED",
+      "available": true
+     },
+     {
+      "title": "Estadias de longa duração permitidas",
+      "subtitle": "Permite estadia por 28 dias ou mais",
+      "icon": "SYSTEM_CALENDAR",
+      "available": true
+     }
+    ]
+   },
+   {
+    "title": "Não incluso",
+    "values": [
+     {
+      "title": "Máquina de lavar",
+      "subtitle": "",
+      "icon": "SYSTEM_NO_WASHER",
+      "available": false
+     },
+     {
+      "title": "Secadora",
+      "subtitle": "",
+      "icon": "SYSTEM_NO_DRYER",
+      "available": false
+     },
+     {
+      "title": "Ar-condicionado",
+      "subtitle": "",
+      "icon": "SYSTEM_NO_AIR_CONDITIONING",
+      "available": false
+     },
+     {
+      "title": "Itens básicos",
+      "subtitle": "",
+      "icon": "SYSTEM_NO_ESSENTIALS",
+      "available": false
+     },
+     {
+      "title": "Detector de fumaça",
+      "subtitle": "Não há detector de fumaça na propriedade.",
+      "icon": "SYSTEM_NO_DETECTOR_SMOKE",
+      "available": false
+     },
+     {
+      "title": "Detector de monóxido de carbono",
+      "subtitle": "Não há detector de monóxido de carbono na propriedade.",
+      "icon": "SYSTEM_NO_DETECTOR_CO2",
+      "available": false
+     },
+     {
+      "title": "Aquecedor",
+      "subtitle": "",
+      "icon": "SYSTEM_NO_HEATER",
+      "available": false
+     }
+    ]
+   }
+  ],
+  "timestamp": "2026-10-31T12:22:37.057Z",
+  "language": "pt",
+  "checkIn": "2026-12-05",
+  "checkOut": "2026-12-09"
+ }
+]

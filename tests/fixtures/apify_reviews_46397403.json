@@ -1,0 +1,130 @@
+[
+ {
+  "startUrl": "https://www.airbnb.com.br/rooms/46397403",
+  "id": "1794188945820921552",
+  "language": "pt",
+  "text": "Adoramos a estadia, a casa tem tudo o que precisa, muito espaço, ótima localização .<br/>Anfitriao A é um querido, voltaremos com certeza.",
+  "localizedText": "Adoramos a estadia, a casa tem tudo o que precisa, muito espaço, ótima localização .<br/>Anfitriao A é um querido, voltaremos com certeza.",
+  "localizedReview": null,
+  "localizedDate": "2 semanas atrás",
+  "localizedReviewerLocation": "5 anos no Airbnb",
+  "createdAt": "2026-10-11T12:13:09Z",
+  "reviewee": {
+   "id": "0",
+   "firstName": "Anfitriao A",
+   "hostName": "Anfitriao A",
+   "pictureUrl": "https://example.invalid/photo.jpg",
+   "profilePath": "/users/profile/0",
+   "profilePicture": "https://example.invalid/photo.jpg"
+  },
+  "reviewer": {
+   "id": "0",
+   "firstName": "Hospede A",
+   "hostName": "Hospede A",
+   "pictureUrl": "https://example.invalid/photo.jpg",
+   "profilePath": "/users/profile/0",
+   "profilePicture": "https://example.invalid/photo.jpg"
+  },
+  "reviewHighlight": "Ficou algumas noites",
+  "highlightType": "LENGTH_OF_STAY",
+  "rating": 5,
+  "response": null,
+  "ratingAccessibilityLabel": "Avaliação, 5 estrelas"
+ },
+ {
+  "startUrl": "https://www.airbnb.com.br/rooms/46397403",
+  "id": "1769555196004984695",
+  "language": "pt",
+  "text": "A casa superou nossas espectativas... Podemos dizer que é bem mais linda do que nós esperamos pelas fotos . O anfitrião pessoa muito gente boa . Facilitou nossa entrada.  A casa acomodou muito bem as pessoas . Amamos com certeza vamos voltar .",
+  "localizedText": "A casa superou nossas espectativas... Podemos dizer que é bem mais linda do que nós esperamos pelas fotos . O anfitrião pessoa muito gente boa . Facilitou nossa entrada.  A casa acomodou muito bem as pessoas . Amamos com certeza vamos voltar .",
+  "localizedReview": null,
+  "localizedDate": "setembro de 2026",
+  "localizedReviewerLocation": "5 anos no Airbnb",
+  "createdAt": "2026-09-07T12:30:17Z",
+  "reviewee": {
+   "id": "0",
+   "firstName": "Anfitriao A",
+   "hostName": "Anfitriao A",
+   "pictureUrl": "https://example.invalid/photo.jpg",
+   "profilePath": "/users/profile/0",
+   "profilePicture": "https://example.invalid/photo.jpg"
+  },
+  "reviewer": {
+   "id": "0",
+   "firstName": "Hospede B",
+   "hostName": "Hospede B",
+   "pictureUrl": "https://example.invalid/photo.jpg",
+   "profilePath": "/users/profile/0",
+   "profilePicture": "https://example.invalid/photo.jpg"
+  },
+  "reviewHighlight": "Ficou algumas noites",
+  "highlightType": "LENGTH_OF_STAY",
+  "rating": 5,
+  "response": null,
+  "ratingAccessibilityLabel": "Avaliação, 5 estrelas"
+ },
+ {
+  "startUrl": "https://www.airbnb.com.br/rooms/46397403",
+  "id": "1669020351283228997",
+  "language": "pt",
+  "text": "A estadia foi muito boa, a casa tem uma ótima localização e atendeu conforme a descrição do anúncio da mesma.",
+  "localizedText": "A estadia foi muito boa, a casa tem uma ótima localização e atendeu conforme a descrição do anúncio da mesma.",
+  "localizedReview": null,
+  "localizedDate": "abril de 2026",
+  "localizedReviewerLocation": "4 anos no Airbnb",
+  "createdAt": "2026-04-21T19:25:30Z",
+  "reviewee": {
+   "id": "0",
+   "firstName": "Anfitriao A",
+   "hostName": "Anfitriao A",
+   "pictureUrl": "https://example.invalid/photo.jpg",
+   "profilePath": "/users/profile/0",
+   "profilePicture": "https://example.invalid/photo.jpg"
+  },
+  "reviewer": {
+   "id": "0",
+   "firstName": "Hospede C",
+   "hostName": "Hospede C",
+   "pictureUrl": "https://example.invalid/photo.jpg",
+   "profilePath": "/users/profile/0",
+   "profilePicture": "https://example.invalid/photo.jpg"
+  },
+  "reviewHighlight": "Ficou algumas noites",
+  "highlightType": "LENGTH_OF_STAY",
+  "rating": 5,
+  "response": null,
+  "ratingAccessibilityLabel": "Avaliação, 5 estrelas"
+ },
+ {
+  "startUrl": "https://www.airbnb.com.br/rooms/46397403",
+  "id": "1657354770774480571",
+  "language": "pt",
+  "text": "Anfitriao A um ótimo anfitrião , chekin foi facilitado com horário flexível  , casa ótima bem arejada e espaçosa , comércio próximo como mercado , padaria , distribuidora , lanchonete e bem pertinho da praia .",
+  "localizedText": "Anfitriao A um ótimo anfitrião , chekin foi facilitado com horário flexível  , casa ótima bem arejada e espaçosa , comércio próximo como mercado , padaria , distribuidora , lanchonete e bem pertinho da praia .",
+  "localizedReview": null,
+  "localizedDate": "abril de 2026",
+  "localizedReviewerLocation": "11 meses no Airbnb",
+  "createdAt": "2026-04-05T17:08:04Z",
+  "reviewee": {
+   "id": "0",
+   "firstName": "Anfitriao A",
+   "hostName": "Anfitriao A",
+   "pictureUrl": "https://example.invalid/photo.jpg",
+   "profilePath": "/users/profile/0",
+   "profilePicture": "https://example.invalid/photo.jpg"
+  },
+  "reviewer": {
+   "id": "0",
+   "firstName": "Hospede D",
+   "hostName": "Hospede D",
+   "pictureUrl": "https://example.invalid/photo.jpg",
+   "profilePath": "/users/profile/0",
+   "profilePicture": "https://example.invalid/photo.jpg"
+  },
+  "reviewHighlight": "Ficou algumas noites",
+  "highlightType": "LENGTH_OF_STAY",
+  "rating": 5,
+  "response": null,
+  "ratingAccessibilityLabel": "Avaliação, 5 estrelas"
+ }
+]
