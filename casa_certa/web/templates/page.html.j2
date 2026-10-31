@@ -4,7 +4,7 @@
 
 {% macro card(c, show_missing) %}
 <article class="card{% if not c.analysed %} pending{% endif %}" data-city="{{ c.city or '' }}" data-rating="{{ '' if c.rating is none else c.rating }}" data-reviews="{{ '' if c.review_count is none else c.review_count }}" data-beach="{{ '' if c.beach_distance_m is none else c.beach_distance_m }}"{% for p in c.prices %} data-price{{ p.people }}="{{ '' if p.per_person_cents is none else p.per_person_cents }}"{% endfor %} data-met="{{ c.met_indexes | join(' ') }}" data-pending="{{ '' if c.analysed else '1' }}">
-  <h3><a href="{{ c.url }}" rel="noopener">{{ c.name }}</a></h3>
+  <h3><a href="{{ c.url }}" target="_blank" rel="noopener noreferrer">{{ c.name }}</a></h3>
   {% if not c.analysed %}
   <p class="muted">{{ labels.no_analysis }}</p>
   {% else %}
@@ -58,7 +58,7 @@
     </table>
     <p class="muted">{{ price_basis }}</p>
     {% endif %}
-    <p><a href="{{ c.url }}" rel="noopener">{{ labels.open_listing }} ↗</a></p>
+    <p><a href="{{ c.url }}" target="_blank" rel="noopener noreferrer">{{ labels.open_listing }} ↗</a></p>
   </details>
   {% endif %}
 </article>

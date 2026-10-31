@@ -44,6 +44,8 @@ async def test_page_has_header_sections_filters_and_card_data(session: AsyncSess
     assert 'name="aspect" value="0"' in html and 'name="aspect" value="1"' in html
     assert "★ Perto da praia" in html
     assert "https://www.airbnb.com.br/rooms/46397403" in html
+    # listing links open in a new tab and never hand the page (or its address) to Airbnb
+    assert html.count('href="https://www.airbnb.com.br/rooms/46397403" target="_blank" rel="noopener noreferrer"') == 2
 
 
 async def test_a_house_missing_a_must_have_is_listed_under_the_second_section(
