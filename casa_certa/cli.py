@@ -274,7 +274,7 @@ async def _hit_ids(services: RunServices, trip: TripConfig, mode: RunMode, outco
 
 
 def stale_search_warning(info: SearchInfo | None, trip: TripConfig) -> str | None:
-    """A warning when the stored search was run for other dates or a smaller group than the trip's now."""
+    """A warning when the stored search was run for different dates or group size than the trip has now."""
     if info is None or (info.check_in, info.check_out, info.guests) == (trip.check_in, trip.check_out, trip.max_people):
         return None
     return (
