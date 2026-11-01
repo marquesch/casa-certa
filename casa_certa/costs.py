@@ -7,7 +7,7 @@ through context variables, so concurrent tasks (`asyncio.gather`) never mix thei
 from collections.abc import Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Protocol
 
 from pydantic_ai.usage import RunUsage
@@ -43,8 +43,7 @@ class HouseCost:
 class _Batch:
     room_ids: list[str]
     estimate_usd: float
-    reported_usd: float = 0.0
-    reported: bool = False
+    run_costs: list[float] = field(default_factory=list)  # one per actor run; <= 0 means not billed/reported
 
 
 class CostTracker:
@@ -68,7 +67,12 @@ class CostTracker:
 
     @contextmanager
     def batch(self, room_ids: list[str], estimate_usd: float) -> Iterator[None]:
-        """Covers exactly one actor run for these houses; its cost is split evenly among `room_ids`."""
+        """One source call for these houses, possibly several actor runs (fallback sources); costs split evenly.
+
+        Every run's cost is reported through `record_apify`; an amount <= 0 means that run's billed cost is unknown.
+        Positive amounts are summed. With none, `estimate_usd` is used instead. Either way the share is marked
+        estimated when it was split, estimated, or some run's cost was unknown.
+        """
         if not room_ids:
             raise ValueError("A cost batch needs at least one room id")
         batch = _Batch(room_ids, estimate_usd)
@@ -81,12 +85,8 @@ class CostTracker:
 
     def record_apify(self, actor_id: str, usd: float) -> None:
         batch = self._batch.get()
-        if batch is None:
-            return
-        if batch.reported:
-            raise RuntimeError("A cost batch covers exactly one actor run, but a second cost was reported")
-        batch.reported_usd = usd
-        batch.reported = True
+        if batch is not None:
+            batch.run_costs.append(usd)
 
     def record_llm(self, model: str, input_tokens: int, output_tokens: int) -> None:
         usd = (input_tokens * self._input_price + output_tokens * self._output_price) / TOKENS_PER_MTOK
@@ -95,10 +95,11 @@ class CostTracker:
         target.llm_usd += usd
 
     def _settle(self, batch: _Batch) -> None:
-        reported = batch.reported_usd > 0
-        total = batch.reported_usd if reported else batch.estimate_usd
+        reported = sum(usd for usd in batch.run_costs if usd > 0)
+        unknown = not batch.run_costs or any(usd <= 0 for usd in batch.run_costs)
+        total = reported if reported > 0 else batch.estimate_usd
         share = total / len(batch.room_ids)
-        estimated = not reported or len(batch.room_ids) > 1
+        estimated = reported <= 0 or unknown or len(batch.room_ids) > 1
         for room_id in batch.room_ids:
             cost = self._costs.setdefault(room_id, HouseCost())
             cost.apify_usd += share

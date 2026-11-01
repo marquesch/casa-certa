@@ -121,8 +121,10 @@ class RecordingSink:
         self.calls.append((actor_id, usd))
 
 
-@pytest.mark.parametrize(("usage", "expected"), [(0.0123, [("a/b", 0.0123)]), (0.0, []), (None, [])])
-async def test_actor_runner_reports_only_a_billed_cost_to_the_sink(usage, expected) -> None:
+@pytest.mark.parametrize(
+    ("usage", "expected"), [(0.0123, [("a/b", 0.0123)]), (0.0, [("a/b", 0.0)]), (None, [("a/b", 0.0)])]
+)
+async def test_actor_runner_reports_zero_when_the_billed_cost_is_missing(usage, expected) -> None:
     run = SimpleNamespace(status="SUCCEEDED", default_dataset_id="ds", usage_total_usd=usage)
     sink = RecordingSink()
     runner = ApifyActorRunner(cast(ApifyClientAsync, FakeClient(run)), cost_sink=sink)

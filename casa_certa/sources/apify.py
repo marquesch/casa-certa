@@ -111,8 +111,8 @@ class ApifyActorRunner:
         return list(page.items)
 
     def _report_cost(self, actor_id: str, run: Any) -> None:
-        # The usage field can read 0.0 (or None) for a run that just finished, before billing catches up. Treat both as
-        # "not reported" so the caller falls back to its estimate instead of recording a free run.
-        usd = getattr(run, "usage_total_usd", None)
-        if self._cost_sink is not None and usd:
+        # The usage field can read 0.0 (or None) for a run that just finished, before billing catches up. Report that as
+        # 0.0, meaning "not reported": the tracker then falls back to its estimate instead of booking a free run.
+        usd = getattr(run, "usage_total_usd", None) or 0.0
+        if self._cost_sink is not None:
             self._cost_sink.record_apify(actor_id, float(usd))

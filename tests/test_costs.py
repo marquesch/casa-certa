@@ -127,8 +127,33 @@ def test_a_batch_without_room_ids_is_rejected() -> None:
         pass
 
 
-def test_a_batch_covers_exactly_one_actor_run() -> None:
+def test_several_reported_runs_in_one_batch_are_summed_and_split() -> None:
     tracker = make_tracker()
-    with pytest.raises(RuntimeError), tracker.batch(["1"], estimate_usd=0.1):
-        tracker.record_apify("a/b", 0.01)
-        tracker.record_apify("a/b", 0.01)
+
+    with tracker.batch(["1", "2"], estimate_usd=9.0):
+        tracker.record_apify("a/b", 0.02)
+        tracker.record_apify("c/d", 0.04)
+
+    assert tracker.cost_of("1").apify_usd == pytest.approx(0.03)
+    assert tracker.cost_of("2").apify_usd == pytest.approx(0.03)
+
+
+def test_one_reported_and_one_unreported_run_gives_the_reported_sum_marked_estimated() -> None:
+    tracker = make_tracker()
+
+    with tracker.batch(["1"], estimate_usd=9.0):
+        tracker.record_apify("a/b", 0.0)
+        tracker.record_apify("c/d", 0.04)
+
+    assert tracker.cost_of("1").apify_usd == pytest.approx(0.04)
+    assert tracker.cost_of("1").estimated
+
+
+def test_only_unreported_runs_use_the_estimate() -> None:
+    tracker = make_tracker()
+
+    with tracker.batch(["1"], estimate_usd=0.03):
+        tracker.record_apify("a/b", 0.0)
+
+    assert tracker.cost_of("1").apify_usd == pytest.approx(0.03)
+    assert tracker.cost_of("1").estimated
