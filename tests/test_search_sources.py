@@ -51,13 +51,14 @@ def test_build_input_omits_the_price_limit_when_unset() -> None:
 
 async def test_search_returns_the_fixture_hits() -> None:
     items = load_json("search_tri_angle.json")
-    hits = await TriAngleSearch(FakeRunner({ACTOR: items})).search(make_query())
+    hits = await TriAngleSearch(FakeRunner({ACTOR: items})).search(make_query(min_rating=None))
     assert len(hits) == len(items)
     assert hits[0] == SearchHit(
         airbnb_id=items[0]["id"],
         url=f"https://www.airbnb.com.br/rooms/{items[0]['id']}",
         title=items[0]["title"],
         location="Itapoá, SC",
+        rating=items[0]["rating"]["guestSatisfaction"],
     )
 
 
@@ -102,3 +103,27 @@ async def test_actor_failure_raises_search_error() -> None:
 def test_estimate_usd_is_per_result() -> None:
     source = TriAngleSearch(FakeRunner({}))
     assert source.estimate_usd(10) == pytest.approx(10 * source.RESULT_COST_USD)
+
+
+def rated(room_id: str, score) -> dict[str, Any]:
+    rating = None if score is None else {"guestSatisfaction": score}
+    return {"url": f"https://www.airbnb.com.br/rooms/{room_id}", "title": "Casa", "rating": rating}
+
+
+@pytest.mark.parametrize(
+    ("min_rating", "expected"),
+    [(4.5, ["2", "3"]), (None, ["1", "2", "3"]), (0.0, ["1", "2", "3"])],
+)
+async def test_min_rating_drops_below_keeps_at_threshold_and_unrated(min_rating, expected) -> None:
+    items = [rated("1", 4.4), rated("2", 4.5), rated("3", None)]
+    hits = await TriAngleSearch(FakeRunner({ACTOR: items})).search(make_query(min_rating=min_rating))
+    assert [h.airbnb_id for h in hits] == expected
+
+
+async def test_hit_carries_the_rating() -> None:
+    hits = await TriAngleSearch(FakeRunner({ACTOR: [rated("1", 4.8)]})).search(make_query(min_rating=None))
+    assert hits[0].rating == 4.8
+
+
+def test_price_limit_is_passed_per_night_unchanged() -> None:
+    assert TriAngleSearch(FakeRunner({})).build_input(make_query(max_price_per_night=750))["priceMax"] == 750

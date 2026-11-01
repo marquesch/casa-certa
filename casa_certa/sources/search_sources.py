@@ -49,6 +49,7 @@ class SearchHit(BaseModel):
     url: str
     title: str | None = None
     location: str  # the query text that found it
+    rating: float | None = None  # guest satisfaction, 0-5; None for a listing without ratings yet
 
 
 class TriAngleSearch:
@@ -77,6 +78,8 @@ class TriAngleSearch:
             "locale": "pt-BR",
         }
         if query.max_price_per_night is not None:
+            # Verified live (priceMax=1000 returned stays with totals of R$ 1.632 to R$ 3.713 for 4 nights): the
+            # actor reads priceMax per night, like the trip config, so it is passed unchanged.
             run_input["priceMax"] = query.max_price_per_night
         return run_input
 
@@ -85,15 +88,18 @@ class TriAngleSearch:
         if not isinstance(item, dict):
             return None
         try:
-            room_id = room_id_from_url(str(item.get("url") or item.get("id") or ""))
+            room_id = room_id_from_url(str(item.get("url") or ""))
         except ValueError:
             return None
         title = item.get("title")
+        rating = item.get("rating")
+        score = rating.get("guestSatisfaction") if isinstance(rating, dict) else None
         return SearchHit(
             airbnb_id=room_id,
             url=listing_url(room_id),
             title=title if isinstance(title, str) else None,
             location=query.location,
+            rating=float(score) if isinstance(score, int | float) and not isinstance(score, bool) else None,
         )
 
     async def search(self, query: SearchQuery) -> list[SearchHit]:
@@ -109,5 +115,16 @@ class TriAngleSearch:
             raise
         except ApifyError as error:
             raise SearchError(str(error)) from error
-        hits = (self.parse_item(item, query) for item in items)
-        return list({hit.airbnb_id: hit for hit in hits if hit is not None}.values())
+        parsed = (self.parse_item(item, query) for item in items)
+        hits = list({hit.airbnb_id: hit for hit in parsed if hit is not None}.values())
+        kept = [hit for hit in hits if self._meets_rating(hit, query)]
+        if len(kept) < len(hits):
+            log.info(
+                "search: dropped %d of %d hits below rating %s", len(hits) - len(kept), len(hits), query.min_rating
+            )
+        return kept
+
+    @staticmethod
+    def _meets_rating(hit: SearchHit, query: SearchQuery) -> bool:
+        """Unrated listings stay: a new listing is not a bad one, and the later analysis judges it."""
+        return query.min_rating is None or hit.rating is None or hit.rating >= query.min_rating
