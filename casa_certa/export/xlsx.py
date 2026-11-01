@@ -27,7 +27,12 @@ FAILURE_FONT = Font(bold=True, color="C00000")
 NOTE_FONT = Font(italic=True)
 
 
-def build_workbook(houses: list[House], failures: dict[str, str], trip: TripConfig) -> Workbook:
+def build_workbook(
+    houses: list[House],
+    failures: dict[str, str],
+    trip: TripConfig,
+    screened_out: dict[str, str] | None = None,
+) -> Workbook:
     labels = labels_for(trip.language)
     workbook = Workbook()
     comparison = workbook.worksheets[0]
@@ -35,6 +40,8 @@ def build_workbook(houses: list[House], failures: dict[str, str], trip: TripConf
     _write_comparison(comparison, houses, failures, trip, labels)
     details = workbook.create_sheet(labels.details_sheet)
     _write_details(details, houses, trip, labels)
+    if screened_out:
+        _write_screened_out(workbook.create_sheet(labels.screened_out_sheet), screened_out, labels)
     return workbook
 
 
@@ -138,6 +145,17 @@ def _write_comparison(
     sheet.column_dimensions[get_column_letter(sheet.max_column - 1)].width = 30  # the confidence column
     sheet.column_dimensions[get_column_letter(sheet.max_column)].width = 60  # the summary column
     sheet.freeze_panes = "B2"
+
+
+def _write_screened_out(sheet: Worksheet, screened_out: dict[str, str], labels: Labels) -> None:
+    """Houses dropped before the paid steps; the link lets a wrong drop be rescued by adding it to `urls`."""
+    _append(sheet, [labels.id, labels.link, labels.reason], bold=True)
+    for room_id, reason in screened_out.items():
+        row = _append(sheet, [room_id, listing_url(room_id), reason])
+        sheet.cell(row=row, column=2).hyperlink = listing_url(room_id)
+    for column, width in zip("ABC", (16, 44, 80), strict=True):
+        sheet.column_dimensions[column].width = width
+    sheet.freeze_panes = "A2"
 
 
 def _source_label(source: EvidenceSource, labels: Labels) -> str:

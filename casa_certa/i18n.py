@@ -7,6 +7,9 @@ from dataclasses import dataclass
 class Labels:
     comparison_sheet: str
     details_sheet: str
+    screened_out_sheet: str
+    id: str
+    link: str
     house: str
     rating: str
     reviews: str
@@ -77,6 +80,9 @@ class Labels:
 PT_BR = Labels(
     comparison_sheet="Comparativo",
     details_sheet="Detalhes",
+    screened_out_sheet="Descartadas",
+    id="Id",
+    link="Link",
     house="Casa",
     rating="Nota",
     reviews="Avaliações",
@@ -147,6 +153,9 @@ PT_BR = Labels(
 EN = Labels(
     comparison_sheet="Comparison",
     details_sheet="Details",
+    screened_out_sheet="Screened out",
+    id="Id",
+    link="Link",
     house="House",
     rating="Rating",
     reviews="Reviews",

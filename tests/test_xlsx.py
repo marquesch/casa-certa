@@ -177,3 +177,22 @@ async def test_per_person_columns_show_the_per_guest_fee_of_a_house_that_charges
     row = [cell.value for cell in build_workbook([stored_house], {}, make_trip())["Comparativo"][2]]
 
     assert row[6:8] == [327.45, 341.16]  # the larger group pays more each: ceil(2947/9) and ceil(4435/13)
+
+
+async def test_screened_out_sheet_lists_id_link_and_reason(session: AsyncSession, stored_house: House) -> None:
+    house = await analysed_house(session, stored_house)
+
+    workbook = build_workbook([house], {}, make_trip(), {"111": "preço acima do limite"})
+
+    assert workbook.sheetnames == ["Comparativo", "Detalhes", "Descartadas"]
+    sheet = workbook["Descartadas"]
+    assert [cell.value for cell in sheet[1]] == ["Id", "Link", "Motivo"]
+    assert [cell.value for cell in sheet[2]] == ["111", "https://www.airbnb.com.br/rooms/111", "preço acima do limite"]
+    assert sheet["B2"].hyperlink.target == "https://www.airbnb.com.br/rooms/111"
+
+
+async def test_no_screened_out_sheet_when_nothing_was_dropped(session: AsyncSession, stored_house: House) -> None:
+    house = await analysed_house(session, stored_house)
+
+    assert build_workbook([house], {}, make_trip()).sheetnames == ["Comparativo", "Detalhes"]
+    assert build_workbook([house], {}, make_trip(), {}).sheetnames == ["Comparativo", "Detalhes"]
