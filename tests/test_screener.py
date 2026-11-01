@@ -118,3 +118,18 @@ def test_instructions_say_fails_only_when_the_listing_clearly_contradicts() -> N
     assert 'Use "fails" only when the listing clearly contradicts' in text
     assert 'Use "unclear" when the listing is silent or vague' in text
     assert TRIP.language in text
+
+
+async def test_screener_reports_token_usage(matinhos_facts: ListingFacts) -> None:
+    calls: list[tuple[str, int, int]] = []
+
+    class Sink:
+        def record_llm(self, model: str, input_tokens: int, output_tokens: int) -> None:
+            calls.append((model, input_tokens, output_tokens))
+
+    screener = HouseScreener(reply_with(output(ScreenStatus.MEETS), []), usage_sink=Sink())
+
+    await screener.screen(matinhos_facts, TRIP)
+
+    assert len(calls) == 1
+    assert calls[0][1] > 0 and calls[0][2] > 0

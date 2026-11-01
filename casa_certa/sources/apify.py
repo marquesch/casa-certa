@@ -15,6 +15,8 @@ from apify_client import ApifyClientAsync
 from apify_client.errors import ApifyClientError
 from pydantic import BaseModel
 
+from casa_certa.costs import CostSink
+
 log = logging.getLogger(__name__)
 
 # The platform aborts a run that takes longer than this, which surfaces as a non-SUCCEEDED status.
@@ -61,8 +63,9 @@ class ActorRunner(Protocol):
 class ApifyActorRunner:
     """Runs an actor on Apify and returns its dataset items."""
 
-    def __init__(self, client: ApifyClientAsync) -> None:
+    def __init__(self, client: ApifyClientAsync, cost_sink: CostSink | None = None) -> None:
         self._client = client
+        self._cost_sink = cost_sink
 
     async def run_actor(
         self,
@@ -100,8 +103,16 @@ class ApifyActorRunner:
             raise ApifyError(f"Actor {actor_id} did not start")
         if run.status != "SUCCEEDED":
             raise ApifyError(f"Actor {actor_id} finished with status {run.status}")
+        self._report_cost(actor_id, run)
         try:
             page = await self._client.dataset(run.default_dataset_id).list_items()
         except (ApifyClientError, httpx.HTTPError) as e:
             raise ApifyError(f"Could not read the results of actor {actor_id}: {e!r}") from e
         return list(page.items)
+
+    def _report_cost(self, actor_id: str, run: Any) -> None:
+        # The usage field can read 0.0 (or None) for a run that just finished, before billing catches up. Treat both as
+        # "not reported" so the caller falls back to its estimate instead of recording a free run.
+        usd = getattr(run, "usage_total_usd", None)
+        if self._cost_sink is not None and usd:
+            self._cost_sink.record_apify(actor_id, float(usd))

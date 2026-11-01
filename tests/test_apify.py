@@ -111,3 +111,22 @@ async def test_actor_runner_passes_no_limits_through_as_none() -> None:
 
     assert client.actor_call.kwargs["max_items"] is None
     assert client.actor_call.kwargs["max_total_charge_usd"] is None
+
+
+class RecordingSink:
+    def __init__(self) -> None:
+        self.calls: list[tuple[str, float]] = []
+
+    def record_apify(self, actor_id: str, usd: float) -> None:
+        self.calls.append((actor_id, usd))
+
+
+@pytest.mark.parametrize(("usage", "expected"), [(0.0123, [("a/b", 0.0123)]), (0.0, []), (None, [])])
+async def test_actor_runner_reports_only_a_billed_cost_to_the_sink(usage, expected) -> None:
+    run = SimpleNamespace(status="SUCCEEDED", default_dataset_id="ds", usage_total_usd=usage)
+    sink = RecordingSink()
+    runner = ApifyActorRunner(cast(ApifyClientAsync, FakeClient(run)), cost_sink=sink)
+
+    await runner.run_actor("a/b", {})
+
+    assert sink.calls == expected

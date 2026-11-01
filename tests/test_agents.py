@@ -100,3 +100,24 @@ def test_importing_the_package_silences_the_pydantic_ai_banner() -> None:
     import casa_certa  # noqa: F401
 
     assert "PYDANTIC_AI_NO_BANNER" in os.environ
+
+
+class RecordingUsage:
+    def __init__(self) -> None:
+        self.calls: list[tuple[str, int, int]] = []
+
+    def record_llm(self, model: str, input_tokens: int, output_tokens: int) -> None:
+        self.calls.append((model, input_tokens, output_tokens))
+
+
+async def test_namer_and_analyst_report_token_usage(matinhos_facts: ListingFacts) -> None:
+    sink = RecordingUsage()
+    namer = HouseNamer(reply_with('{"name": "Casa"}', []), usage_sink=sink)
+    expected = sample_analysis(["Piscina"])
+    analyst = HouseAnalyst(reply_with(expected.model_dump_json(), []), usage_sink=sink)
+
+    await namer.name(matinhos_facts, "pt-BR")
+    await analyst.analyze("P", "I", ["Piscina"])
+
+    assert len(sink.calls) == 2
+    assert all(inp > 0 and out > 0 for _, inp, out in sink.calls)

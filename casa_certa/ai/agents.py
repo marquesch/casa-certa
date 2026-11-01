@@ -4,15 +4,22 @@ from pydantic_ai import Agent, PromptedOutput, RunContext
 from pydantic_ai.models import Model
 from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.deepseek import DeepSeekProvider
+from pydantic_ai.usage import RunUsage
 
 from casa_certa.ai.aspects import canonicalise_aspects
 from casa_certa.ai.prompts import naming_instructions, naming_prompt
 from casa_certa.ai.schemas import HouseAnalysis, HouseName
+from casa_certa.costs import UsageSink
 from casa_certa.sources.airbnb_page import ListingFacts
 
 
 def make_deepseek_model(api_key: str, model_name: str) -> OpenAIChatModel:
     return OpenAIChatModel(model_name, provider=DeepSeekProvider(api_key=api_key))
+
+
+def report_usage(sink: UsageSink | None, model_name: str, usage: RunUsage) -> None:
+    if sink is not None:
+        sink.record_llm(model_name, usage.input_tokens, usage.output_tokens)
 
 
 def make_unique_name(name: str, taken: set[str]) -> str:
@@ -29,23 +36,27 @@ def make_unique_name(name: str, taken: set[str]) -> str:
 class HouseNamer:
     """Cheap model: suggests a short descriptive name for a new house."""
 
-    def __init__(self, model: Model) -> None:
+    def __init__(self, model: Model, usage_sink: UsageSink | None = None) -> None:
         self._agent: Agent[None, HouseName] = Agent(model, output_type=PromptedOutput(HouseName))
+        self._model_name = model.model_name
+        self._usage_sink = usage_sink
 
     async def name(self, facts: ListingFacts, language: str) -> str:
         result = await self._agent.run(naming_prompt(facts), instructions=naming_instructions(language))
+        report_usage(self._usage_sink, self._model_name, result.usage)
         return result.output.name.strip()
 
 
 class HouseAnalyst:
     """Judges a house against the aspects using the listing, reviews and notes. On the cheap model today."""
 
-    def __init__(self, model: Model, retries: int = 2) -> None:
+    def __init__(self, model: Model, retries: int = 2, usage_sink: UsageSink | None = None) -> None:
         self._agent: Agent[list[str], HouseAnalysis] = Agent(
             model, output_type=PromptedOutput(HouseAnalysis), deps_type=list[str], retries={"output": retries}
         )
         self._agent.output_validator(self._canonicalise_aspects)
         self.model_name = model.model_name
+        self._usage_sink = usage_sink
 
     @staticmethod
     def _canonicalise_aspects(ctx: RunContext[list[str]], analysis: HouseAnalysis) -> HouseAnalysis:
@@ -54,4 +65,5 @@ class HouseAnalyst:
 
     async def analyze(self, prompt: str, instructions: str, aspect_names: list[str]) -> HouseAnalysis:
         result = await self._agent.run(prompt, instructions=instructions, deps=aspect_names)
+        report_usage(self._usage_sink, self.model_name, result.usage)
         return result.output
