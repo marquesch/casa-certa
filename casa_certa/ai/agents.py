@@ -4,22 +4,16 @@ from pydantic_ai import Agent, PromptedOutput, RunContext
 from pydantic_ai.models import Model
 from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.deepseek import DeepSeekProvider
-from pydantic_ai.usage import RunUsage
 
 from casa_certa.ai.aspects import canonicalise_aspects
 from casa_certa.ai.prompts import naming_instructions, naming_prompt
 from casa_certa.ai.schemas import HouseAnalysis, HouseName
-from casa_certa.costs import UsageSink
+from casa_certa.costs import UsageSink, report_usage
 from casa_certa.sources.airbnb_page import ListingFacts
 
 
 def make_deepseek_model(api_key: str, model_name: str) -> OpenAIChatModel:
     return OpenAIChatModel(model_name, provider=DeepSeekProvider(api_key=api_key))
-
-
-def report_usage(sink: UsageSink | None, model_name: str, usage: RunUsage) -> None:
-    if sink is not None:
-        sink.record_llm(model_name, usage.input_tokens, usage.output_tokens)
 
 
 def make_unique_name(name: str, taken: set[str]) -> str:

@@ -3,12 +3,11 @@
 from pydantic_ai import Agent, PromptedOutput, RunContext
 from pydantic_ai.models import Model
 
-from casa_certa.ai.agents import report_usage
 from casa_certa.ai.aspects import canonicalise_aspects
 from casa_certa.ai.prompts import must_haves, screen_instructions, screen_prompt
 from casa_certa.ai.schemas import ScreenOutput
 from casa_certa.config import TripConfig
-from casa_certa.costs import UsageSink
+from casa_certa.costs import UsageSink, report_usage
 from casa_certa.sources.airbnb_page import ListingFacts
 
 

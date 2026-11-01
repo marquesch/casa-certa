@@ -10,6 +10,8 @@ from contextvars import ContextVar
 from dataclasses import dataclass
 from typing import Protocol
 
+from pydantic_ai.usage import RunUsage
+
 TOKENS_PER_MTOK = 1_000_000
 
 
@@ -19,6 +21,11 @@ class CostSink(Protocol):
 
 class UsageSink(Protocol):
     def record_llm(self, model: str, input_tokens: int, output_tokens: int) -> None: ...
+
+
+def report_usage(sink: UsageSink | None, model_name: str, usage: RunUsage) -> None:
+    if sink is not None:
+        sink.record_llm(model_name, usage.input_tokens, usage.output_tokens)
 
 
 @dataclass
@@ -37,6 +44,7 @@ class _Batch:
     room_ids: list[str]
     estimate_usd: float
     reported_usd: float = 0.0
+    reported: bool = False
 
 
 class CostTracker:
@@ -51,8 +59,8 @@ class CostTracker:
         self._batch: ContextVar[_Batch | None] = ContextVar("cost_batch", default=None)
 
     @contextmanager
-    def house(self, label: str) -> Iterator[None]:
-        token = self._house.set(label)
+    def house(self, room_id: str) -> Iterator[None]:
+        token = self._house.set(room_id)
         try:
             yield
         finally:
@@ -60,6 +68,9 @@ class CostTracker:
 
     @contextmanager
     def batch(self, room_ids: list[str], estimate_usd: float) -> Iterator[None]:
+        """Covers exactly one actor run for these houses; its cost is split evenly among `room_ids`."""
+        if not room_ids:
+            raise ValueError("A cost batch needs at least one room id")
         batch = _Batch(room_ids, estimate_usd)
         token = self._batch.set(batch)
         try:
@@ -70,8 +81,12 @@ class CostTracker:
 
     def record_apify(self, actor_id: str, usd: float) -> None:
         batch = self._batch.get()
-        if batch is not None:
-            batch.reported_usd += usd
+        if batch is None:
+            return
+        if batch.reported:
+            raise RuntimeError("A cost batch covers exactly one actor run, but a second cost was reported")
+        batch.reported_usd = usd
+        batch.reported = True
 
     def record_llm(self, model: str, input_tokens: int, output_tokens: int) -> None:
         usd = (input_tokens * self._input_price + output_tokens * self._output_price) / TOKENS_PER_MTOK
@@ -80,8 +95,6 @@ class CostTracker:
         target.llm_usd += usd
 
     def _settle(self, batch: _Batch) -> None:
-        if not batch.room_ids:
-            return
         reported = batch.reported_usd > 0
         total = batch.reported_usd if reported else batch.estimate_usd
         share = total / len(batch.room_ids)
@@ -91,8 +104,8 @@ class CostTracker:
             cost.apify_usd += share
             cost.estimated = cost.estimated or estimated
 
-    def cost_of(self, label: str) -> HouseCost:
-        return self._costs.get(label, HouseCost())
+    def cost_of(self, room_id: str) -> HouseCost:
+        return self._costs.get(room_id, HouseCost())
 
     def total(self) -> HouseCost:
         everything = [*self._costs.values(), self._unassigned]
@@ -102,18 +115,20 @@ class CostTracker:
             estimated=any(c.estimated for c in everything),
         )
 
-    def line(self, label: str, index: int, total: int, status: str) -> str:
-        """One progress line, e.g. `[12/80] Casa: Apify ~$0.0105, DeepSeek ~$0.0009, run total $0.38 (...)`.
+    def line(self, room_id: str, name: str, index: int, total: int, status: str) -> str:
+        """One progress line for the house `room_id`, printed under its display `name`.
+
+        Example: `[12/80] Casa da Piscina: Apify ~$0.0105, DeepSeek ~$0.0009, run total $0.38 (...)`.
 
         `analysed` shows the costs only; any other status is printed before them, and `cached` costs nothing. The
         DeepSeek figure is always `~` (priced from configured per-token rates); Apify's only when estimated or split.
         """
         run = self.total()
         run_total = f"run total ${run.total_usd:.2f} (Apify ${run.apify_usd:.2f}, DeepSeek ${run.llm_usd:.2f})"
-        prefix = f"[{index}/{total}] {label}:"
+        prefix = f"[{index}/{total}] {name}:"
         if status == "cached":
             return f"{prefix} cached, $0, {run_total}"
-        cost = self.cost_of(label)
+        cost = self.cost_of(room_id)
         mark = "~" if cost.estimated else ""
         figures = f"Apify {mark}${cost.apify_usd:.4f}, DeepSeek ~${cost.llm_usd:.4f}"
         shown = figures if status == "analysed" else f"{status}, {figures}"

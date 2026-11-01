@@ -86,9 +86,12 @@ def test_line_marks_estimates_with_a_tilde_and_shows_running_total() -> None:
     with tracker.house("1"):
         tracker.record_llm("m", 1_000_000, 0)
 
-    line = tracker.line("1", 12, 80, "analysed")
+    line = tracker.line("1", "Casa da Piscina", 12, 80, "analysed")
 
-    assert line == "[12/80] 1: Apify ~$0.0105, DeepSeek ~$0.2800, run total $0.30 (Apify $0.02, DeepSeek $0.28)"
+    assert (
+        line
+        == "[12/80] Casa da Piscina: Apify ~$0.0105, DeepSeek ~$0.2800, run total $0.30 (Apify $0.02, DeepSeek $0.28)"
+    )
 
 
 def test_line_has_no_tilde_on_an_exact_apify_figure() -> None:
@@ -96,12 +99,36 @@ def test_line_has_no_tilde_on_an_exact_apify_figure() -> None:
     with tracker.batch(["1"], estimate_usd=0.0):
         tracker.record_apify("a/b", 0.02)
 
-    assert "Apify $0.0200" in tracker.line("1", 1, 1, "analysed")
+    assert "Apify $0.0200" in tracker.line("1", "Casa", 1, 1, "analysed")
 
 
 def test_cached_house_line_costs_zero() -> None:
     tracker = make_tracker()
 
-    assert tracker.line("Casa", 3, 10, "cached") == (
+    assert tracker.line("46397403", "Casa", 3, 10, "cached") == (
         "[3/10] Casa: cached, $0, run total $0.00 (Apify $0.00, DeepSeek $0.00)"
     )
+
+
+def test_line_shows_both_figures_when_booked_by_room_id() -> None:
+    tracker = make_tracker()
+    with tracker.batch(["46397403"], estimate_usd=0.0):
+        tracker.record_apify("a/b", 0.02)
+    with tracker.house("46397403"):
+        tracker.record_llm("m", 1_000_000, 0)
+
+    line = tracker.line("46397403", "Casa da Piscina", 1, 2, "analysed")
+
+    assert line.startswith("[1/2] Casa da Piscina: Apify $0.0200, DeepSeek ~$0.2800")
+
+
+def test_a_batch_without_room_ids_is_rejected() -> None:
+    with pytest.raises(ValueError), make_tracker().batch([], estimate_usd=0.1):
+        pass
+
+
+def test_a_batch_covers_exactly_one_actor_run() -> None:
+    tracker = make_tracker()
+    with pytest.raises(RuntimeError), tracker.batch(["1"], estimate_usd=0.1):
+        tracker.record_apify("a/b", 0.01)
+        tracker.record_apify("a/b", 0.01)
