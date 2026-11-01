@@ -3,6 +3,7 @@
 import asyncio
 import logging
 import time
+from contextlib import AbstractContextManager, nullcontext
 from dataclasses import dataclass, field
 
 import httpx
@@ -11,15 +12,20 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from casa_certa.ai.agents import HouseAnalyst, HouseNamer, make_unique_name
-from casa_certa.ai.prompts import analysis_instructions, analysis_prompt, prompt_hash
+from casa_certa.ai.prompts import analysis_instructions, analysis_prompt, must_haves, prompt_hash, screen_hash
+from casa_certa.ai.schemas import ScreenOutput
+from casa_certa.ai.screener import HouseScreener
 from casa_certa.config import TripConfig
+from casa_certa.costs import CostTracker
 from casa_certa.db.models import House
-from casa_certa.db.repository import HouseRepository
+from casa_certa.db.repository import HouseRepository, SearchRepository
+from casa_certa.enums import ScreenStatus
 from casa_certa.sources.airbnb_page import (
     AirbnbPageError,
     ListingFacts,
     Sleep,
     fetch_listings,
+    listing_url,
     room_id_from_url,
 )
 from casa_certa.sources.apify import (
@@ -39,15 +45,32 @@ HOUSE_ERRORS = (AirbnbPageError, ApifyError, AgentRunError, SQLAlchemyError)
 
 
 @dataclass(frozen=True)
+class RoomRef:
+    """A house to process. `screen` is True for a search hit, which must pass the must-haves before any paid step."""
+
+    room_id: str
+    screen: bool
+
+
+def rooms_from(trip: TripConfig, hit_ids: list[str]) -> list[RoomRef]:
+    """The yaml urls first (never screened), then the search hits not already listed; each house once."""
+    listed = dict.fromkeys(room_id_from_url(url) for url in trip.urls)
+    hits = [room_id for room_id in dict.fromkeys(hit_ids) if room_id not in listed]
+    return [RoomRef(room_id, screen=False) for room_id in listed] + [RoomRef(room_id, screen=True) for room_id in hits]
+
+
+@dataclass(frozen=True)
 class RunPlan:
     """What a run would fetch. Houses already stored are not listed unless `refresh` was requested."""
 
-    room_ids: list[str]
+    room_ids: list[str]  # every house in play, without the stored screen failures that are skipped
     fetch_facts: list[str]
     fetch_reviews: list[str]
     fetch_prices: dict[str, list[int]]  # room id -> the group sizes that still need a quote
     review_cap: int
-    estimated_cost_usd: float  # from the first source of each chain; fallback sources may add to it
+    estimated_cost_usd: float  # assumes every hit to screen passes; fallback sources may add to it
+    screen_rooms: list[str] = field(default_factory=list)  # search hits whose page will be screened
+    skipped_screened: list[str] = field(default_factory=list)  # hits that failed the same must-haves before
 
     @property
     def price_quotes(self) -> int:
@@ -66,6 +89,7 @@ class RunReport:
     houses: list[House]
     failures: dict[str, str]
     warnings: dict[str, list[str]] = field(default_factory=dict)
+    screened_out: dict[str, str] = field(default_factory=dict)  # room id -> the reason of the first failed must-have
 
 
 class Pipeline:
@@ -80,6 +104,8 @@ class Pipeline:
         analyst: HouseAnalyst,
         page_delay: tuple[float, float] = (2.0, 5.0),
         sleep: Sleep = asyncio.sleep,
+        screener: HouseScreener | None = None,
+        tracker: CostTracker | None = None,
     ) -> None:
         self._session_factory = session_factory
         self._http = http_client
@@ -89,17 +115,32 @@ class Pipeline:
         self._analyst = analyst
         self._page_delay = page_delay
         self._sleep = sleep
+        self._screener = screener
+        self._tracker = tracker
 
-    async def plan(self, trip: TripConfig, *, refresh: bool = False) -> RunPlan:
+    async def plan(self, trip: TripConfig, rooms: list[RoomRef], *, refresh: bool = False) -> RunPlan:
         """Decide what is missing. Reads the database only; never touches the network."""
-        room_ids = list(dict.fromkeys(room_id_from_url(url) for url in trip.urls))
+        screening = self._screener is not None and bool(must_haves(trip))
+        digest = screen_hash(must_haves(trip))
+        room_ids: list[str] = []
         fetch_facts: list[str] = []
         fetch_reviews: list[str] = []
         fetch_prices: dict[str, list[int]] = {}
+        screen_rooms: list[str] = []
+        skipped_screened: list[str] = []
         async with self._session_factory() as session:
             repo = HouseRepository(session)
-            for room_id in room_ids:
+            searches = SearchRepository(session)
+            for room_id, is_hit in self._screen_flags(rooms).items():
                 house = await repo.get(room_id)
+                if house is None and is_hit and screening:  # a stored house is never screened
+                    stored = await searches.get_screen(room_id)
+                    if stored is None or stored.input_hash != digest or refresh:
+                        screen_rooms.append(room_id)
+                    elif not stored.passed:  # failed these same must-haves before: not even the page is fetched
+                        skipped_screened.append(room_id)
+                        continue
+                room_ids.append(room_id)
                 if house is None or refresh:
                     fetch_facts.append(room_id)
                 # A house that truly has zero reviews is asked again on every run: that is nearly free.
@@ -118,7 +159,17 @@ class Pipeline:
             fetch_prices=fetch_prices,
             review_cap=trip.review_cap,
             estimated_cost_usd=cost,
+            screen_rooms=screen_rooms,
+            skipped_screened=skipped_screened,
         )
+
+    @staticmethod
+    def _screen_flags(rooms: list[RoomRef]) -> dict[str, bool]:
+        """Each room once, in order; a room listed both ways is not screened (the user chose it)."""
+        flags: dict[str, bool] = {}
+        for room in rooms:
+            flags[room.room_id] = flags.get(room.room_id, True) and room.screen
+        return flags
 
     @staticmethod
     def _missing_sizes(house: House | None, trip: TripConfig, *, refresh: bool) -> list[int]:
@@ -130,17 +181,21 @@ class Pipeline:
         capacity = house.facts.person_capacity if house.facts else None
         return [size for size in trip.group_sizes() if size not in stored and (capacity is None or size <= capacity)]
 
-    async def run(self, trip: TripConfig, *, refresh: bool = False) -> RunReport:
-        """Free page fetch, then store facts, then pay Apify only for houses we can store, then store the rest."""
-        plan = await self.plan(trip, refresh=refresh)
+    async def run(self, trip: TripConfig, rooms: list[RoomRef], *, refresh: bool = False) -> RunReport:
+        """Free page fetch, screen the hits, store facts, pay Apify only for houses we can store, then the rest.
+
+        Screened-out houses never reach a paid step and get no `house` row."""
+        plan = await self.plan(trip, rooms, refresh=refresh)
         failures: dict[str, str] = {}
         warnings: dict[str, list[str]] = {}
         pages: dict[str, ListingFacts | AirbnbPageError] = {}
         if plan.fetch_facts:
             log.info("fetching %d listing pages (free; paced to be polite)", len(plan.fetch_facts))
             pages = await fetch_listings(plan.fetch_facts, client=self._http, delay=self._page_delay, sleep=self._sleep)
-        await self._store_all_facts(trip, plan, pages, failures, warnings)
-        in_play = [room_id for room_id in plan.room_ids if room_id not in failures]
+        screened_out = await self._screen_all(trip, plan.screen_rooms, pages, failures)
+        dropped = failures.keys() | screened_out.keys()
+        await self._store_all_facts(trip, [r for r in plan.fetch_facts if r not in dropped], pages, failures, warnings)
+        in_play = [room_id for room_id in plan.room_ids if room_id not in failures and room_id not in screened_out]
         reviews = await self._fetch_reviews([r for r in plan.fetch_reviews if r in in_play], trip, warnings)
         requests = await self._price_requests(plan.fetch_prices, in_play)
         prices = await self._fetch_prices(requests, trip, warnings)
@@ -148,12 +203,62 @@ class Pipeline:
         houses = await self._store_extras_and_analyze(
             trip, in_play, reviews, prices, notes, failures=failures, warnings=warnings
         )
-        return RunReport(plan=plan, houses=houses, failures=failures, warnings=warnings)
+        return RunReport(plan=plan, houses=houses, failures=failures, warnings=warnings, screened_out=screened_out)
+
+    async def _screen_all(
+        self,
+        trip: TripConfig,
+        room_ids: list[str],
+        pages: dict[str, ListingFacts | AirbnbPageError],
+        failures: dict[str, str],
+    ) -> dict[str, str]:
+        """Phase 1b: judge each hit's free listing text against the must-haves and store the result.
+
+        Returns the screened-out houses with their reason. A page that could not be fetched is left to phase 2,
+        which fails the house; a screening error fails the house without storing a result, so it is tried again."""
+        screener = self._screener
+        if screener is None or not room_ids:
+            return {}
+        digest = screen_hash(must_haves(trip))
+        screened_out: dict[str, str] = {}
+        total = len(room_ids)
+        log.info("screening %d searched houses against the must-haves with %s", total, screener.model_name)
+        async with self._session_factory() as session:
+            searches = SearchRepository(session)
+            for index, room_id in enumerate(room_ids, start=1):
+                page = pages.get(room_id)
+                if not isinstance(page, ListingFacts):
+                    continue
+                try:
+                    with self._house_costs(room_id):
+                        screen = await screener.screen(page, trip)
+                    verdicts = [(v.aspect, v.status, v.reason, v.quote) for v in screen.verdicts]
+                    await searches.save_screen(
+                        room_id, listing_url(room_id), page.title, digest, screener.model_name, screen.passed, verdicts
+                    )
+                    await session.commit()
+                except HOUSE_ERRORS as error:
+                    await session.rollback()
+                    failures[room_id] = str(error)
+                    self._log_house(logging.WARNING, room_id, room_id, index, total, f"failed ({error})")
+                    continue
+                if not screen.passed:
+                    screened_out[room_id] = self._screen_reason(screen)
+                    label = (page.title or "").strip() or room_id
+                    self._log_house(
+                        logging.INFO, room_id, label, index, total, f"screened out: {screened_out[room_id]}"
+                    )
+        return screened_out
+
+    @staticmethod
+    def _screen_reason(screen: ScreenOutput) -> str:
+        failed = next(v for v in screen.verdicts if v.status is ScreenStatus.FAILS)
+        return f'{failed.reason} ("{failed.quote}")' if failed.quote else failed.reason
 
     async def _store_all_facts(
         self,
         trip: TripConfig,
-        plan: RunPlan,
+        room_ids: list[str],
         pages: dict[str, ListingFacts | AirbnbPageError],
         failures: dict[str, str],
         warnings: dict[str, list[str]],
@@ -161,16 +266,17 @@ class Pipeline:
         """Phase 2: name, create and commit each house on its own; a failure drops only that house from the run."""
         async with self._session_factory() as session:
             repo = HouseRepository(session)
-            total = len(plan.fetch_facts)
-            for index, room_id in enumerate(plan.fetch_facts, start=1):
+            total = len(room_ids)
+            for index, room_id in enumerate(room_ids, start=1):
                 messages: list[str] = []
                 try:
-                    house = await self._store_facts(repo, trip, room_id, pages[room_id], messages)
+                    with self._house_costs(room_id):
+                        house = await self._store_facts(repo, trip, room_id, pages[room_id], messages)
                     await repo.commit()
                 except HOUSE_ERRORS as error:
                     await repo.rollback()
                     failures[room_id] = str(error)
-                    log.warning("[%d/%d] %s: failed (%s)", index, total, room_id, error)
+                    self._log_house(logging.WARNING, room_id, room_id, index, total, f"failed ({error})")
                     continue
                 log.info("[%d/%d] %s (%s): listing saved", index, total, house.name, room_id)
                 if messages:
@@ -202,22 +308,21 @@ class Pipeline:
                     if room_id in notes and house.extra != notes[room_id]:
                         house.extra = notes[room_id]
                     await repo.commit()  # keep paid data even if the analysis below fails
-                    analysis_seconds = await self._analyze_if_stale(repo, trip, house)
+                    with self._house_costs(room_id):
+                        analysis_seconds = await self._analyze_if_stale(repo, trip, house)
                 except HOUSE_ERRORS as error:
                     await repo.rollback()
                     failures[room_id] = str(error)
-                    log.warning("[%d/%d] %s: failed (%s)", index, total, room_id, error)
+                    self._log_house(logging.WARNING, room_id, room_id, index, total, f"failed ({error})")
                     continue
-                log.info(
-                    "[%d/%d] %s (%s): done - %d reviews, %d price quotes, analysis %s",
-                    index,
-                    total,
-                    house.name,
-                    room_id,
-                    len(house.reviews),
-                    len(house.quotes_by_guests(trip)),
-                    "cached" if analysis_seconds is None else f"{analysis_seconds:.0f}s",
-                )
+                bought = room_id in reviews or room_id in prices
+                if analysis_seconds is None and not bought and self._tracker is not None:
+                    status = "cached"  # nothing was paid for this house in this run
+                else:
+                    analysis = "cached" if analysis_seconds is None else f"{analysis_seconds:.0f}s"
+                    counts = f"{len(house.reviews)} reviews, {len(house.quotes_by_guests(trip))} price quotes"
+                    status = f"done - {counts}, analysis {analysis}"
+                self._log_house(logging.INFO, room_id, house.name, index, total, status)
                 if messages:
                     warnings.setdefault(room_id, []).extend(messages)
             for room_id in room_ids:
@@ -228,14 +333,32 @@ class Pipeline:
                     houses.append(stored)
         return houses
 
+    def _house_costs(self, room_id: str) -> AbstractContextManager[None]:
+        """Attribute the LLM usage inside to this house."""
+        return self._tracker.house(room_id) if self._tracker is not None else nullcontext()
+
+    def _batch_costs(self, room_ids: list[str], estimate_usd: float) -> AbstractContextManager[None]:
+        """Split the Apify cost of the one source call inside among these houses."""
+        return self._tracker.batch(room_ids, estimate_usd) if self._tracker is not None and room_ids else nullcontext()
+
+    def _log_house(self, level: int, room_id: str, name: str, index: int, total: int, status: str) -> None:
+        """The one line logged when a house is done (or failed), with its cost when a tracker is present."""
+        if self._tracker is not None:
+            log.log(level, "%s", self._tracker.line(room_id, name, index, total, status))
+        else:
+            label = room_id if name == room_id else f"{name} ({room_id})"
+            log.log(level, "[%d/%d] %s: %s", index, total, label, status)
+
     async def _fetch_reviews(
         self, room_ids: list[str], trip: TripConfig, warnings: dict[str, list[str]]
     ) -> dict[str, list[ReviewData] | ApifyError]:
         if not room_ids:
             return {}
         expected = await self._expected_reviews(room_ids)
+        estimate = self._review_source.estimate_usd(len(room_ids), trip.review_cap)
         try:
-            batch = await self._review_source.fetch_reviews(room_ids, trip, expect_reviews=expected)
+            with self._batch_costs(room_ids, estimate):
+                batch = await self._review_source.fetch_reviews(room_ids, trip, expect_reviews=expected)
         except ApifyError as error:
             return dict.fromkeys(room_ids, error)
         for room_id, note in batch.notes.items():
@@ -275,7 +398,8 @@ class Pipeline:
         async def quote(size: int, room_ids: list[str]) -> tuple[int, SourceBatch[PriceData]]:
             async with semaphore:
                 try:
-                    return size, await self._price_source.fetch_prices(room_ids, trip, size)
+                    with self._batch_costs(room_ids, self._price_source.estimate_usd(len(room_ids))):
+                        return size, await self._price_source.fetch_prices(room_ids, trip, size)
                 except ApifyError as error:
                     return size, SourceBatch(dict.fromkeys(room_ids, error))
 

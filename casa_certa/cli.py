@@ -19,7 +19,7 @@ from casa_certa.db.repository import HouseRepository
 from casa_certa.db.session import create_session_factory
 from casa_certa.export.xlsx import build_workbook
 from casa_certa.logging_setup import configure_logging
-from casa_certa.pipeline import Pipeline, RunPlan
+from casa_certa.pipeline import Pipeline, RunPlan, rooms_from
 from casa_certa.sources.airbnb_page import make_client
 from casa_certa.sources.apify import ApifyActorRunner
 from casa_certa.sources.registry import build_price_source, build_review_source
@@ -97,14 +97,14 @@ async def _run(args: argparse.Namespace) -> int:
                 analyst=HouseAnalyst(make_deepseek_model(api_key, settings.analysis_model)),
                 page_delay=(settings.page_delay_min, settings.page_delay_max),
             )
-            plan = await pipeline.plan(trip, refresh=args.refresh)
+            plan = await pipeline.plan(trip, rooms_from(trip, []), refresh=args.refresh)
             print(format_plan(plan))
             if args.dry_run:
                 return 0
             if not plan.is_empty and not args.yes and not await _confirm():
                 print("Cancelled.")
                 return 1
-            report = await pipeline.run(trip, refresh=args.refresh)
+            report = await pipeline.run(trip, rooms_from(trip, []), refresh=args.refresh)
     finally:
         await engine.dispose()
 

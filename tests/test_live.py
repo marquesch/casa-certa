@@ -12,7 +12,7 @@ from casa_certa.ai.agents import HouseAnalyst, HouseNamer, make_deepseek_model
 from casa_certa.config import Settings
 from casa_certa.db.models import Base
 from casa_certa.db.session import create_session_factory
-from casa_certa.pipeline import Pipeline
+from casa_certa.pipeline import Pipeline, rooms_from
 from casa_certa.sources.airbnb_page import make_client
 from casa_certa.sources.apify import ApifyActorRunner
 from casa_certa.sources.price_sources import TriAnglePrice
@@ -40,7 +40,7 @@ async def test_real_pipeline_on_one_house(tmp_path: Path) -> None:
             namer=HouseNamer(make_deepseek_model(api_key, settings.cheap_model)),
             analyst=HouseAnalyst(make_deepseek_model(api_key, settings.analysis_model)),
         )
-        report = await pipeline.run(trip)
+        report = await pipeline.run(trip, rooms_from(trip, []))
     await engine.dispose()
 
     assert report.failures == {}

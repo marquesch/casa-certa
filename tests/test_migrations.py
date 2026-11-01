@@ -13,11 +13,18 @@ from casa_certa.db.models import Base
 ROOT = Path(__file__).resolve().parent.parent
 
 
+def alembic_config() -> Config:
+    """Like the CLI, keep Alembic from reconfiguring logging: it would disable the loggers later tests capture."""
+    config = Config(str(ROOT / "alembic.ini"))
+    config.attributes["configure_logger"] = False
+    return config
+
+
 def test_migrations_create_every_orm_table(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     database = tmp_path / "migrated.db"
     monkeypatch.setenv("DATABASE_URL", f"sqlite+aiosqlite:///{database}")
 
-    command.upgrade(Config(str(ROOT / "alembic.ini")), "head")
+    command.upgrade(alembic_config(), "head")
 
     with sqlite3.connect(database) as connection:
         tables = {row[0] for row in connection.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
@@ -27,7 +34,7 @@ def test_migrations_create_every_orm_table(tmp_path: Path, monkeypatch: pytest.M
 def test_migrated_schema_matches_the_orm_models(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     database = tmp_path / "migrated.db"
     monkeypatch.setenv("DATABASE_URL", f"sqlite+aiosqlite:///{database}")
-    command.upgrade(Config(str(ROOT / "alembic.ini")), "head")
+    command.upgrade(alembic_config(), "head")
 
     engine = create_engine(f"sqlite:///{database}")
     with engine.connect() as connection:
@@ -41,7 +48,7 @@ def test_upgrade_keeps_an_old_quote_with_guests_as_adults_plus_children(
 ) -> None:
     database = tmp_path / "old.db"
     monkeypatch.setenv("DATABASE_URL", f"sqlite+aiosqlite:///{database}")
-    config = Config(str(ROOT / "alembic.ini"))
+    config = alembic_config()
     command.upgrade(config, "b6b419520522")
     with sqlite3.connect(database) as connection:
         connection.execute(
@@ -69,7 +76,7 @@ def test_upgrade_keeps_an_old_quote_with_guests_as_adults_plus_children(
 def test_beach_distance_columns_are_added_and_removed(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     database = tmp_path / "old.db"
     monkeypatch.setenv("DATABASE_URL", f"sqlite+aiosqlite:///{database}")
-    config = Config(str(ROOT / "alembic.ini"))
+    config = alembic_config()
     command.upgrade(config, "da6f61dd4ee4")
     with sqlite3.connect(database) as connection:
         connection.execute(
@@ -101,7 +108,7 @@ def test_search_and_screen_tables_are_added_and_old_tables_survive(
 ) -> None:
     database = tmp_path / "old.db"
     monkeypatch.setenv("DATABASE_URL", f"sqlite+aiosqlite:///{database}")
-    config = Config(str(ROOT / "alembic.ini"))
+    config = alembic_config()
     command.upgrade(config, "07e94de0c249")
 
     command.upgrade(config, "head")

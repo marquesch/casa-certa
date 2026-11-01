@@ -17,7 +17,7 @@ async def test_a_run_logs_page_fetches_apify_calls_and_one_line_per_house(
     world = make_world(session_factory)
 
     with caplog.at_level(logging.INFO):
-        await world.pipeline.run(make_trip())
+        await world.run(make_trip())
 
     lines = [record.getMessage() for record in caplog.records]
     assert any(line.startswith("fetching 2 listing pages") for line in lines)
@@ -35,11 +35,11 @@ async def test_a_second_run_reports_the_analysis_as_cached(
     session_factory: async_sessionmaker[AsyncSession], caplog: pytest.LogCaptureFixture
 ) -> None:
     world = make_world(session_factory)
-    await world.pipeline.run(make_trip())
+    await world.run(make_trip())
     caplog.clear()
 
     with caplog.at_level(logging.INFO):
-        await world.pipeline.run(make_trip())
+        await world.run(make_trip())
 
     lines = [record.getMessage() for record in caplog.records]
     assert any("analysis cached" in line for line in lines)
@@ -53,7 +53,7 @@ async def test_a_blocked_page_is_logged_as_a_warning_with_the_house(
     world = make_world(session_factory, blocked=frozenset({"46397403"}))
 
     with caplog.at_level(logging.INFO):
-        await world.pipeline.run(make_trip())
+        await world.run(make_trip())
 
     warnings = [r.getMessage() for r in caplog.records if r.levelno == logging.WARNING]
     assert any(line.startswith("page 1/2 46397403: failed (HTTP 403") for line in warnings)
