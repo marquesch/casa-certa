@@ -182,3 +182,26 @@ def test_unanalysed_cards_sort_after_analysed_ones_even_when_cheaper() -> None:
     ordered = sorted([pending, unpriced, analysed], key=lambda card: default_sort_key(card, 13))
 
     assert [card.name for card in ordered] == ["b", "c", "a"]
+
+
+async def test_a_stored_hit_house_is_on_the_site_after_the_urls_and_only_once(
+    session: AsyncSession, matinhos_facts: ListingFacts
+) -> None:
+    listed = await store(session, "46397403", "Casa do Albatroz", matinhos_facts)
+    hit = await store(session, "777", "Casa Achada", matinhos_facts)
+
+    site = build_site([listed, hit], make_trip(), ["777", "46397403", "777", "888"])
+
+    names = [c.name for c in (*site.complete, *site.incomplete)]
+    assert sorted(names) == ["52584351", "Casa Achada", "Casa do Albatroz"]  # 888 was screened out: no card
+
+
+async def test_a_search_only_trip_shows_its_stored_hit_houses(
+    session: AsyncSession, matinhos_facts: ListingFacts
+) -> None:
+    hit = await store(session, "777", "Casa Achada", matinhos_facts)
+    trip = make_trip(urls=[], search={"locations": ["Praia"]})
+
+    site = build_site([hit], trip, ["777", "888"])
+
+    assert [c.name for c in (*site.complete, *site.incomplete)] == ["Casa Achada"]

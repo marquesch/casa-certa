@@ -196,3 +196,15 @@ async def test_no_screened_out_sheet_when_nothing_was_dropped(session: AsyncSess
 
     assert build_workbook([house], {}, make_trip()).sheetnames == ["Comparativo", "Detalhes"]
     assert build_workbook([house], {}, make_trip(), {}).sheetnames == ["Comparativo", "Detalhes"]
+
+
+async def test_a_screened_out_reason_starting_with_equals_is_text_not_a_formula(
+    session: AsyncSession, stored_house: House
+) -> None:
+    house = await analysed_house(session, stored_house)
+
+    workbook = build_workbook([house], {}, make_trip(), {"111": '=HYPERLINK("http://x","y")'})
+
+    cell = workbook["Descartadas"]["C2"]
+    assert cell.data_type == "s"
+    assert cell.value == '=HYPERLINK("http://x","y")'

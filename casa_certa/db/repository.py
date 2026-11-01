@@ -1,5 +1,7 @@
 """All database reads and writes. Callers own the transaction and call `session.commit()`."""
 
+from dataclasses import dataclass
+from datetime import date
 from typing import Any
 
 from sqlalchemy import delete, select
@@ -199,6 +201,15 @@ class HouseRepository:
         await self._session.rollback()
 
 
+@dataclass(frozen=True)
+class SearchInfo:
+    """What the stored last search was run for."""
+
+    check_in: date
+    check_out: date
+    guests: int
+
+
 class SearchRepository:
     """The last search and the screen results. Callers own the transaction."""
 
@@ -222,6 +233,10 @@ class SearchRepository:
             )
         self.session.add(run)
         await self.session.flush()
+
+    async def last_search_info(self) -> SearchInfo | None:
+        run = await self.session.scalar(select(SearchRun).order_by(SearchRun.id.desc()).limit(1))
+        return SearchInfo(run.check_in, run.check_out, run.guests) if run else None
 
     async def last_search_ids(self) -> list[str]:
         return [hit.airbnb_id for hit in await self.last_search_hits()]

@@ -152,6 +152,7 @@ def _write_screened_out(sheet: Worksheet, screened_out: dict[str, str], labels: 
     _append(sheet, [labels.id, labels.link, labels.reason], bold=True)
     for room_id, reason in screened_out.items():
         row = _append(sheet, [room_id, listing_url(room_id), reason])
+        sheet.cell(row=row, column=3).data_type = "s"  # the reason is LLM text: never a formula, even after "="
         sheet.cell(row=row, column=2).hyperlink = listing_url(room_id)
     for column, width in zip("ABC", (16, 44, 80), strict=True):
         sheet.column_dimensions[column].width = width

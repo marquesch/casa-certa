@@ -71,3 +71,16 @@ async def test_save_screen_replaces_the_previous_result_and_keeps_verdicts(sessi
 
 async def test_get_screen_returns_none_for_an_unknown_house(session: AsyncSession) -> None:
     assert await SearchRepository(session).get_screen("nope") is None
+
+
+async def test_last_search_info_holds_the_dates_and_guests_of_the_run(session: AsyncSession) -> None:
+    repo = SearchRepository(session)
+    assert await repo.last_search_info() is None
+    trip = make_trip()
+    await repo.replace_last_search(trip, [hit("1")])
+    await session.commit()
+
+    info = await repo.last_search_info()
+
+    assert info is not None
+    assert (info.check_in, info.check_out, info.guests) == (trip.check_in, trip.check_out, trip.max_people)

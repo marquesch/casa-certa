@@ -1,5 +1,6 @@
 """View models for the static site: plain data built from the stored houses, with no HTML in it."""
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import date, datetime
 
@@ -146,17 +147,25 @@ def _card(house: House, trip: TripConfig) -> HouseCard:
     )
 
 
-def build_site(houses: list[House], trip: TripConfig) -> SiteModel:
-    """Cards for the trip's listings only (the database may hold houses from other trips), in two sections."""
+def build_site(houses: list[House], trip: TripConfig, hit_ids: Sequence[str] = ()) -> SiteModel:
+    """Cards for the trip's urls (pending when not stored) and the stored houses among `hit_ids`, in two sections.
+
+    The database may hold houses from other trips, so nothing else is shown. A hit that is not stored (it was screened
+    out) has no card."""
     by_airbnb_id = {house.airbnb_id: house for house in houses}
     shown: list[House] = []
     cards: list[HouseCard] = []
-    for url in trip.urls:
-        room_id = room_id_from_url(url)
+    listed = list(dict.fromkeys(room_id_from_url(url) for url in trip.urls))
+    for room_id in listed:
         house = by_airbnb_id.get(room_id)
         if house is None:
             cards.append(HouseCard(name=room_id, url=listing_url(room_id), analysed=False))
         else:
+            shown.append(house)
+            cards.append(_card(house, trip))
+    for room_id in dict.fromkeys(hit_ids):
+        house = by_airbnb_id.get(room_id)
+        if room_id not in listed and house is not None:
             shown.append(house)
             cards.append(_card(house, trip))
     cards.sort(key=lambda card: default_sort_key(card, trip.max_people))

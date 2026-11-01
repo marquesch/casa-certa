@@ -176,3 +176,10 @@ async def test_trip_example_loads_with_a_search_block():
 
     assert trip.search is not None
     assert trip.search.locations
+
+
+def test_a_repeated_location_is_searched_once_keeping_the_first_spelling_and_order() -> None:
+    trip = make_trip(search={"locations": ["Gramado, RS", "Canela", "  gramado,  rs ", "CANELA"]})
+
+    assert trip.search is not None
+    assert trip.search.locations == ["Gramado, RS", "Canela"]

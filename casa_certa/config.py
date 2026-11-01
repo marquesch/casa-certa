@@ -37,7 +37,11 @@ class SearchConfig(BaseModel):
         stripped = [location.strip() for location in value]
         if not all(stripped):
             raise ValueError("locations cannot contain blank entries")
-        return stripped
+        # the same place twice would be searched and billed twice
+        first_of: dict[str, str] = {}
+        for location in stripped:
+            first_of.setdefault(" ".join(location.casefold().split()), location)
+        return list(first_of.values())
 
 
 class TripConfig(BaseModel):

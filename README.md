@@ -57,9 +57,9 @@ uv run casa-certa run trip.yaml --search --analyse   # both, no questions asked 
 Without flags, `run` asks "Search?" (only if there is a `search:` block) and then "Analyse everything found?" with the
 cost shown first; answering no to the search still offers to analyse the urls and the last search. `--yes` answers
 yes to every question. A new search replaces the previous one. `--dry-run` asks nothing and prints what would be
-searched without calling the search actor. `SEARCH_SOURCES` picks the search actor (default `tri_angle`); search costs
+searched without calling the search actor. `SEARCH_SOURCES` picks the search actor (exactly one name for now, default `tri_angle`); search costs
 about $0.004 per result. A run ends with a summary line: houses found (and how many were already stored), screened
-out, analysed, failed, and the total cost. A failed search or house makes the exit code 1.
+out, in the spreadsheet (cached houses included), failed, and the total cost. A failed search or house makes the exit code 1.
 
 **The screen.** Before paying for reviews and price quotes, each searched house is read (free listing data only)
 against your `must_have` aspects by `SCREEN_MODEL` (default `deepseek-chat`). Only a clear failure drops a house; if

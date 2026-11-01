@@ -20,7 +20,7 @@ from casa_certa.config_sources.base import ConfigError
 from casa_certa.config_sources.yaml_source import YamlConfigSource
 from casa_certa.costs import CostTracker, HouseCost
 from casa_certa.db.models import ScreenResult
-from casa_certa.db.repository import HouseRepository, SearchRepository
+from casa_certa.db.repository import HouseRepository, SearchInfo, SearchRepository
 from casa_certa.db.session import create_session_factory
 from casa_certa.enums import ScreenStatus
 from casa_certa.export.xlsx import build_workbook
@@ -98,7 +98,10 @@ def format_hits(hits: list[SearchHit], stored: set[str]) -> str:
 
 @dataclass(frozen=True)
 class RunSummary:
-    """The counts printed at the end of a run. `found` is None when no search ran, `analysed` when no analysis did."""
+    """The counts printed at the end of a run.
+
+    `found` is None when no search ran. `analysed` is None when no analysis ran; otherwise it counts the houses in the
+    spreadsheet, the ones stored by earlier runs included."""
 
     cost: HouseCost
     found: int | None = None
@@ -113,7 +116,7 @@ def format_summary(summary: RunSummary) -> str:
     if summary.found is not None:
         parts.append(f"{summary.found} found ({summary.already_stored} already stored)")
     if summary.analysed is not None:
-        parts += [f"{summary.screened_out} screened out", f"{summary.analysed} analysed"]
+        parts += [f"{summary.screened_out} screened out", f"{summary.analysed} in the spreadsheet"]
     parts.append(f"{summary.failed} failed")
     cost = summary.cost
     mark = "~" if cost.estimated else ""
@@ -235,7 +238,7 @@ async def _analyse_stage(
     """Plan, confirm and run the pipeline on the yaml urls plus the hits, then write the spreadsheet.
 
     None when nothing was analysed."""
-    rooms = rooms_from(trip, await _hit_ids(services, mode, outcome))
+    rooms = rooms_from(trip, await _hit_ids(services, trip, mode, outcome))
     if args.dry_run and mode.search:
         print("Not counted below: the houses the search finds, which are screened before any paid step.")
     if not rooms:
@@ -256,14 +259,28 @@ async def _analyse_stage(
     return analysis
 
 
-async def _hit_ids(services: RunServices, mode: RunMode, outcome: SearchOutcome | None) -> list[str]:
+async def _hit_ids(services: RunServices, trip: TripConfig, mode: RunMode, outcome: SearchOutcome | None) -> list[str]:
     """This run's hits; the stored last search when no search was asked for; none for a dry run's search."""
     if outcome is not None:
         return [hit.airbnb_id for hit in outcome.hits]
     if mode.search:  # a dry run: the search that would run replaces the stored one
         return []
     async with services.session_factory() as session:
-        return await SearchRepository(session).last_search_ids()
+        searches = SearchRepository(session)
+        warning = stale_search_warning(await searches.last_search_info(), trip)
+        if warning:
+            print(warning, file=sys.stderr)
+        return await searches.last_search_ids()
+
+
+def stale_search_warning(info: SearchInfo | None, trip: TripConfig) -> str | None:
+    """A warning when the stored search was run for other dates or a smaller group than the trip's now."""
+    if info is None or (info.check_in, info.check_out, info.guests) == (trip.check_in, trip.check_out, trip.max_people):
+        return None
+    return (
+        f"warning: the stored search was run for {info.check_in} to {info.check_out}, {info.guests} guests, but the "
+        f"trip is {trip.check_in} to {trip.check_out}, {trip.max_people} guests; run --search again"
+    )
 
 
 async def _confirm_analysis(mode: RunMode, plan: RunPlan, ask: Ask) -> bool:
@@ -381,10 +398,11 @@ async def _site(args: argparse.Namespace) -> int:
     try:
         async with session_factory() as session:
             houses = await HouseRepository(session).all()
+            hit_ids = await SearchRepository(session).last_search_ids()
     finally:
         await engine.dispose()
-    index = await asyncio.to_thread(write_site, houses, trip, passphrase, args.output_dir)
-    site = build_site(houses, trip)
+    index = await asyncio.to_thread(write_site, houses, trip, passphrase, args.output_dir, hit_ids)
+    site = build_site(houses, trip, hit_ids)
     shown = len(site.complete) + len(site.incomplete)
     print(f"Wrote {index} ({shown} listings). Run `make publish` to put it online.")
     return 0

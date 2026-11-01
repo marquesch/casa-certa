@@ -1,4 +1,5 @@
 import argparse
+import asyncio
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -28,11 +29,14 @@ from casa_certa.cli import (
     format_summary,
     main,
     resolve_mode,
+    run_migrations,
+    stale_search_warning,
 )
 from casa_certa.config import TripConfig
 from casa_certa.config_sources.base import ConfigError
 from casa_certa.costs import CostTracker, HouseCost
-from casa_certa.db.repository import HouseRepository, SearchRepository
+from casa_certa.db.repository import HouseRepository, SearchInfo, SearchRepository
+from casa_certa.db.session import create_session_factory
 from casa_certa.enums import ScreenStatus
 from casa_certa.pipeline import Pipeline, RunPlan
 from casa_certa.search import SearchService
@@ -418,12 +422,12 @@ def test_summary_lists_counts_and_total_cost() -> None:
     cost = HouseCost(apify_usd=0.35, llm_usd=0.03, estimated=True)
     full = RunSummary(cost=cost, found=12, already_stored=3, screened_out=4, analysed=8, failed=1)
     assert format_summary(full) == (
-        "Summary: 12 found (3 already stored), 4 screened out, 8 analysed, 1 failed. "
+        "Summary: 12 found (3 already stored), 4 screened out, 8 in the spreadsheet, 1 failed. "
         "Total cost $0.38 (Apify ~$0.35, DeepSeek ~$0.03)"
     )
     analyse_only = RunSummary(cost=HouseCost(), analysed=2)
     assert format_summary(analyse_only) == (
-        "Summary: 0 screened out, 2 analysed, 0 failed. Total cost $0.00 (Apify $0.00, DeepSeek ~$0.00)"
+        "Summary: 0 screened out, 2 in the spreadsheet, 0 failed. Total cost $0.00 (Apify $0.00, DeepSeek ~$0.00)"
     )
 
 
@@ -452,7 +456,7 @@ async def test_houses_screened_out_now_and_earlier_are_listed_and_in_the_spreads
 
     for out in (first, second):
         assert f'screened out: {FOUND} Fica longe do mar ("3 km")' in out
-        assert "1 screened out, 1 analysed, 0 failed" in out
+        assert "1 screened out, 1 in the spreadsheet, 0 failed" in out
     assert "skipped, screened out by an earlier run: 1" in second
     sheet = load_workbook(tmp_path / "out.xlsx")["Descartadas"]
     assert FOUND in [str(cell.value) for cell in sheet["A"]]
@@ -472,3 +476,54 @@ async def test_a_failed_search_exits_with_1(tmp_path: Path, session_factory, cap
 async def test_yes_and_dry_run_answer_the_search_questions_without_asking(tmp_path: Path) -> None:
     for flag in ("--yes", "--dry-run"):
         assert await resolve_mode(run_args(tmp_path, flag), search_trip(), Asker()) == RunMode(True, True, True)
+
+
+def test_stale_search_warning_only_when_dates_or_guests_differ() -> None:
+    trip = search_trip()
+    same = SearchInfo(trip.check_in, trip.check_out, trip.max_people)
+    assert stale_search_warning(None, trip) is None
+    assert stale_search_warning(same, trip) is None
+    assert "run --search again" in str(stale_search_warning(SearchInfo(trip.check_in, trip.check_out, 2), trip))
+    other_dates = SearchInfo(trip.check_out, trip.check_out, trip.max_people)
+    assert "run --search again" in str(stale_search_warning(other_dates, trip))
+
+
+async def test_analysing_a_stale_search_warns_on_stderr(tmp_path: Path, session_factory, capsys) -> None:
+    trip = search_trip()
+    async with session_factory() as session:
+        await SearchRepository(session).replace_last_search(
+            trip.model_copy(update={"max_people": 2, "min_people": 2}),
+            [SearchHit(airbnb_id=FOUND, url=listing_url(FOUND), location="Praia")],
+        )
+        await session.commit()
+    world = make_cli_world(session_factory)
+
+    await execute_run(run_args(tmp_path, "--analyse", "--yes"), trip, world.services, Asker())
+
+    assert "run --search again" in capsys.readouterr().err
+
+
+def test_site_shows_the_stored_hits_of_a_search_only_trip(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    trip_file = site_environment(tmp_path, monkeypatch)
+    trip_file.write_text("search: {locations: [Praia]}\ncheck_in: 2026-12-05\ncheck_out: 2026-12-09\n", encoding="utf8")
+    monkeypatch.setenv("SITE_PASSPHRASE", "cavalo-nuvem-tijolo-lampada-rio")
+
+    async def seed() -> None:
+        await asyncio.to_thread(run_migrations)
+        engine, factory = create_session_factory(f"sqlite+aiosqlite:///{tmp_path / 'test.db'}")
+        async with factory() as session:
+            repo = HouseRepository(session)
+            await repo.add("777", "Casa Achada")
+            await SearchRepository(session).replace_last_search(
+                make_trip(),
+                [SearchHit(airbnb_id=i, url=listing_url(i), location="Praia") for i in ("777", "888")],
+            )
+            await session.commit()
+        await engine.dispose()
+
+    asyncio.run(seed())
+
+    assert main(["site", str(trip_file)]) == 0
+    assert "(1 listings)" in capsys.readouterr().out
