@@ -4,7 +4,7 @@ from typing import Self
 
 from pydantic import BaseModel, Field, model_validator
 
-from casa_certa.enums import AspectStatus, EvidenceSource
+from casa_certa.enums import AspectStatus, EvidenceSource, ScreenStatus
 
 
 class EvidenceOut(BaseModel):
@@ -43,3 +43,18 @@ class HouseAnalysis(BaseModel):
 
 class HouseName(BaseModel):
     name: str = Field(description="Short descriptive house name, 2 to 5 words")
+
+
+class ScreenVerdictOut(BaseModel):
+    aspect: str = Field(description="Exactly the must-have name given in the request")
+    status: ScreenStatus
+    reason: str = Field(description="One short sentence")
+    quote: str = Field(default="", description="Short verbatim quote from the listing; empty when unclear")
+
+
+class ScreenOutput(BaseModel):
+    verdicts: list[ScreenVerdictOut]
+
+    @property
+    def passed(self) -> bool:
+        return all(verdict.status is not ScreenStatus.FAILS for verdict in self.verdicts)

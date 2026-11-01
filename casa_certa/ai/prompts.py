@@ -3,7 +3,7 @@ told which language to answer in."""
 
 import hashlib
 
-from casa_certa.config import TripConfig
+from casa_certa.config import Aspect, AspectKind, TripConfig
 from casa_certa.db.models import House
 from casa_certa.sources.airbnb_page import ListingFacts
 
@@ -146,3 +146,57 @@ def naming_prompt(facts: ListingFacts) -> str:
             f"Description: {_one_line(facts.description or '', MAX_DESCRIPTION_CHARS)}",
         ]
     )
+
+
+def must_haves(trip: TripConfig) -> list[Aspect]:
+    return [aspect for aspect in trip.aspects if aspect.kind is AspectKind.MUST_HAVE]
+
+
+def screen_instructions(trip: TripConfig) -> str:
+    return f"""You are screening an Airbnb listing for a family trip of about {trip.min_people} to {trip.max_people} \
+people. You see only the free listing text (no guest reviews) and a list of MUST_HAVE requirements.
+
+Rules:
+- Return exactly one verdict per requirement, with the requirement name spelled as given.
+- Use "fails" only when the listing clearly contradicts the requirement (for example it states the beach is 5 km away \
+when the requirement is walking distance, or the amenity is listed as NOT available).
+- Use "unclear" when the listing is silent or vague about the requirement. Hosts exaggerate and the facts are often \
+only in guest reviews, so doubt is never a reason to fail.
+- Use "meets" when the listing supports the requirement.
+- quote is a short verbatim excerpt from the listing that supports the verdict; leave it empty when the status is \
+"unclear".
+- An amenity that appears in neither the available nor the NOT available list is unclear.
+- Write reason in {trip.language}. Keep JSON keys and enum values in English."""
+
+
+def screen_prompt(facts: ListingFacts, trip: TripConfig) -> str:
+    """Free listing data only: never reviews. Only the must-have aspects are asked."""
+    lines = [
+        "## Listing",
+        f"Title: {_show(facts.title)}",
+        f"Location: {_show(facts.location_name)}",
+        f"Coordinates: {_show(facts.latitude)}, {_show(facts.longitude)} (exact: {_show(facts.location_is_exact)})",
+        "",
+        "## Description",
+        facts.description or "(none)",
+        "",
+        "## Highlights",
+        *([f"- {h.headline}: {h.body}" for h in facts.highlights] or ["(none)"]),
+        "",
+        "## Amenities available",
+        ", ".join(facts.available_amenities()) or "(none)",
+        "## Amenities NOT available",
+        ", ".join(facts.unavailable_amenities()) or "(none)",
+        "",
+        "## MUST_HAVE requirements to judge",
+    ]
+    for aspect in must_haves(trip):
+        detail = f": {aspect.details}" if aspect.details else ""
+        lines.append(f"- {aspect.name}{detail}")
+    return "\n".join(lines)
+
+
+def screen_hash(instructions: str, must_have_aspects: list[Aspect]) -> str:
+    """Identifies what the screen asked. Changes only when a must-have name or details change."""
+    asked = "\n".join(f"{aspect.name}\x1f{aspect.details}" for aspect in must_have_aspects)
+    return hashlib.sha256(f"{instructions}\n\x00\n{asked}".encode()).hexdigest()

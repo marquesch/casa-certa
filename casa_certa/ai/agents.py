@@ -1,13 +1,13 @@
 """DeepSeek agents built on Pydantic AI: a namer and an analyst. Each takes its model, so tiers are a setting."""
 
-from pydantic_ai import Agent, ModelRetry, PromptedOutput, RunContext
+from pydantic_ai import Agent, PromptedOutput, RunContext
 from pydantic_ai.models import Model
 from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.deepseek import DeepSeekProvider
 
+from casa_certa.ai.aspects import canonicalise_aspects
 from casa_certa.ai.prompts import naming_instructions, naming_prompt
 from casa_certa.ai.schemas import HouseAnalysis, HouseName
-from casa_certa.names import normalize_name
 from casa_certa.sources.airbnb_page import ListingFacts
 
 
@@ -49,16 +49,7 @@ class HouseAnalyst:
 
     @staticmethod
     def _canonicalise_aspects(ctx: RunContext[list[str]], analysis: HouseAnalysis) -> HouseAnalysis:
-        """Require exactly the requested aspects (ignoring case and spacing) and restore their configured spelling."""
-        requested = {normalize_name(name): name for name in ctx.deps}
-        received = [normalize_name(verdict.aspect) for verdict in analysis.aspects]
-        if len(received) != len(requested) or set(received) != set(requested):
-            raise ModelRetry(
-                "The aspects must be exactly these, spelled as given, one verdict each: "
-                f"{ctx.deps}. You returned: {[verdict.aspect for verdict in analysis.aspects]}."
-            )
-        for verdict in analysis.aspects:
-            verdict.aspect = requested[normalize_name(verdict.aspect)]
+        canonicalise_aspects(ctx.deps, analysis.aspects)
         return analysis
 
     async def analyze(self, prompt: str, instructions: str, aspect_names: list[str]) -> HouseAnalysis:
