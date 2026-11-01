@@ -4,7 +4,7 @@ import pytest
 from pydantic_ai.exceptions import AgentRunError
 from pydantic_ai.messages import ModelMessage
 
-from casa_certa.ai.prompts import screen_hash, screen_instructions, screen_prompt
+from casa_certa.ai.prompts import must_haves, screen_hash, screen_instructions, screen_prompt
 from casa_certa.ai.schemas import ScreenOutput, ScreenVerdictOut
 from casa_certa.ai.screener import HouseScreener
 from casa_certa.config import Aspect, AspectKind, TripConfig
@@ -35,7 +35,15 @@ def test_prompt_has_listing_text_and_must_have_details_but_no_reviews(matinhos_f
     assert matinhos_facts.title and matinhos_facts.title in prompt
     assert matinhos_facts.description and matinhos_facts.description.split()[0] in prompt
     assert "Perto da praia: até 500 m a pé" in prompt
-    assert "review" not in prompt.lower()
+    assert "## Guest reviews" not in prompt
+    assert [line for line in prompt.splitlines() if line.startswith("## ")] == [
+        "## Listing",
+        "## Description",
+        "## Highlights",
+        "## Amenities available",
+        "## Amenities NOT available",
+        "## MUST_HAVE requirements to judge",
+    ]
 
 
 def test_nice_to_haves_are_not_asked(matinhos_facts: ListingFacts) -> None:
@@ -90,12 +98,18 @@ async def test_invalid_replies_forever_raise(reply: str, matinhos_facts: Listing
 
 
 def test_hash_changes_with_must_have_details_not_with_nice_to_haves() -> None:
-    instructions = screen_instructions(TRIP)
-    base = screen_hash(instructions, [BEACH])
+    with_nice = make_trip(BEACH, POOL)
+    without_nice = make_trip(BEACH)
+    base = screen_hash(must_haves(without_nice))
 
-    assert screen_hash(instructions, [BEACH]) == base
-    assert screen_hash(instructions, [Aspect(name=BEACH.name, kind=BEACH.kind, details="1 km")]) != base
-    assert screen_hash(instructions, [BEACH, POOL][:1]) == base
+    assert screen_hash(must_haves(with_nice)) == base
+    assert screen_hash([Aspect(name=BEACH.name, kind=BEACH.kind, details="1 km")]) != base
+
+
+def test_hash_ignores_group_size_and_language() -> None:
+    changed = TRIP.model_copy(update={"min_people": 2, "max_people": 4, "language": "en"})
+
+    assert screen_hash(must_haves(changed)) == screen_hash(must_haves(TRIP))
 
 
 def test_instructions_say_fails_only_when_the_listing_clearly_contradicts() -> None:

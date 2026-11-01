@@ -9,6 +9,7 @@ from casa_certa.sources.airbnb_page import ListingFacts
 
 MAX_REVIEW_CHARS = 700
 MAX_DESCRIPTION_CHARS = 300
+SCREEN_PROMPT_VERSION = "1"  # bump by hand when the screening rules text changes
 
 
 def analysis_instructions(trip: TripConfig) -> str:
@@ -158,8 +159,8 @@ people. You see only the free listing text (no guest reviews) and a list of MUST
 
 Rules:
 - Return exactly one verdict per requirement, with the requirement name spelled as given.
-- Use "fails" only when the listing clearly contradicts the requirement (for example it states the beach is 5 km away \
-when the requirement is walking distance, or the amenity is listed as NOT available).
+- Use "fails" only when the listing clearly contradicts the requirement \
+(for example it states a fact incompatible with the requirement's details, or the amenity is listed as NOT available).
 - Use "unclear" when the listing is silent or vague about the requirement. Hosts exaggerate and the facts are often \
 only in guest reviews, so doubt is never a reason to fail.
 - Use "meets" when the listing supports the requirement.
@@ -196,7 +197,8 @@ def screen_prompt(facts: ListingFacts, trip: TripConfig) -> str:
     return "\n".join(lines)
 
 
-def screen_hash(instructions: str, must_have_aspects: list[Aspect]) -> str:
-    """Identifies what the screen asked. Changes only when a must-have name or details change."""
+def screen_hash(must_have_aspects: list[Aspect]) -> str:
+    """Identifies what the screen asked. Changes only when a must-have name or details change (or the version is
+    bumped), not with group size or language."""
     asked = "\n".join(f"{aspect.name}\x1f{aspect.details}" for aspect in must_have_aspects)
-    return hashlib.sha256(f"{instructions}\n\x00\n{asked}".encode()).hexdigest()
+    return hashlib.sha256(f"{SCREEN_PROMPT_VERSION}\n\x00\n{asked}".encode()).hexdigest()
