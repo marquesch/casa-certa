@@ -1,7 +1,7 @@
 .DEFAULT_GOAL := help
 TRIP ?= trip.yaml
 
-.PHONY: help install hooks format lint typecheck test test-live test-live-sources check dry-run run refresh site publish passphrase migrate migration clean
+.PHONY: help install hooks format lint typecheck test test-live test-live-sources test-live-search check dry-run run refresh search analyse site publish passphrase migrate migration clean
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}'
@@ -31,6 +31,9 @@ test-live: ## Run the live smoke test (spends a few cents)
 test-live-sources: ## Cross-check the cheap sources against the reference actors (spends a few cents)
 	uv run pytest -m live tests/test_live_sources.py -s
 
+test-live-search: ## One real search of one place (spends about a cent)
+	uv run pytest -m live tests/test_live_search.py -s
+
 check: ## Everything CI would verify, without changing files
 	uv run ruff format --check .
 	uv run ruff check .
@@ -42,6 +45,12 @@ dry-run: ## Show what a run would fetch and cost (TRIP=trip.yaml)
 
 run: ## Analyze the houses and write the spreadsheet (TRIP=trip.yaml)
 	uv run casa-certa run $(TRIP)
+
+search: ## Search the places in trip.yaml and store the houses found, analyses nothing (TRIP=trip.yaml)
+	uv run casa-certa run $(TRIP) --search
+
+analyse: ## Analyse the urls plus the last search (TRIP=trip.yaml)
+	uv run casa-certa run $(TRIP) --analyse
 
 refresh: ## Re-fetch everything from Airbnb, costs money (TRIP=trip.yaml)
 	uv run casa-certa run $(TRIP) --refresh

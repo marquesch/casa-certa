@@ -13,6 +13,7 @@ cp trip.example.yaml trip.yaml   # then put your own listings, dates and aspects
 
 `.env` needs two secrets: `APIFY_TOKEN` (prices and reviews) and `DEEPSEEK_API_KEY` (naming and analysis).
 Optional: `DATABASE_URL`; `CHEAP_MODEL` (naming) and `ANALYSIS_MODEL` (analysis), both defaulting to `deepseek-chat`;
+`SEARCH_SOURCES` and `SCREEN_MODEL` (search actor and screening model);
 `PAGE_DELAY_MIN` / `PAGE_DELAY_MAX` (seconds to wait between listing page requests, default 2 and 5).
 
 ## Use
@@ -39,6 +40,32 @@ uv run casa-certa run trip.yaml [--dry-run] [--refresh] [--yes] [--output out.xl
 
 Stored data is never re-fetched unless you pass `--refresh`. Changing the dates only fetches the new prices; reviews
 and listing facts stay cached. The analysis is re-run only when its inputs change.
+
+## Search and screening
+
+Besides listing URLs you can ask for houses by place. Add a `search:` block to `trip.yaml` (see `trip.example.yaml`):
+`locations` (free text, one search each), `max_results` per place (bounds the cost), and optional
+`max_price_per_night` and `min_rating`. Search asks for `max_people` paying guests on your dates. `urls` becomes
+optional when `search` is set. Three modes:
+
+```bash
+make search    # search the places, print the houses found, store them as "the last search"; analyses nothing
+make analyse   # analyse the yaml urls plus the houses of the last search (already analysed ones are skipped)
+uv run casa-certa run trip.yaml --search --analyse   # both, no questions asked (implies --yes)
+```
+
+Without flags, `run` asks "Search?" (only if there is a `search:` block) and then "Analyse everything found?" with the
+cost shown first. A new search replaces the previous one. `--dry-run` prints what would be searched without calling
+the search actor. `SEARCH_SOURCES` picks the search actor (default `tri_angle`); search costs about $0.004 per result.
+
+**The screen.** Before paying for reviews and price quotes, each searched house is read (free listing data only)
+against your `must_have` aspects by `SCREEN_MODEL` (default `deepseek-chat`). Only a clear failure drops a house; if
+the listing is unclear, the house passes. Houses in `urls` are never screened, and with no must-haves the screen is
+skipped. Screened-out houses are never silent: the run prints `screened out: <reason>`, and the result is stored so
+they are not screened again (unless `--refresh` or the must-haves change).
+
+**Rescuing a screened-out house:** add its URL to `urls` in `trip.yaml` and run again; houses you list yourself are
+analysed regardless of the screen.
 
 ## Notes, review cap and prices
 
@@ -108,4 +135,5 @@ make help        # list every target
 make check       # format check, lint, mypy, tests
 make test-live   # one real run on one house (spends a few cents)
 make test-live-sources   # cross-check the cheap actors (spends a few cents)
+make test-live-search    # one real search of one place (spends about a cent)
 ```

@@ -1,7 +1,17 @@
 # Copy this file to trip.yaml (which is gitignored) and edit it:  cp trip.example.yaml trip.yaml
+# Houses you already chose. Optional when `search` is set; these are never screened out.
 urls:
   - https://www.airbnb.com.br/rooms/12345678
   - https://www.airbnb.com.br/rooms/87654321
+# Optional: look for more houses. Each place is one search (costs money; bounded by max_results).
+# The screen reads each found house's free listing against the must_have aspects below and drops only clear failures.
+search:
+  locations:           # free text, one search each
+    - Itapoá, SC
+    - Jardim Botânico, Curitiba
+  max_results: 20      # per location; bounds the cost (default 40)
+  max_price_per_night: 1500   # optional, BRL per night
+  min_rating: 4.5      # optional, 0 to 5; houses without ratings yet are kept
 check_in: 2027-01-10
 check_out: 2027-01-14
 # Group sizes to price: paying guests (adults + children). Infants do not count and are passed as a fixed number.

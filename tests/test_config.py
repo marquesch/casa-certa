@@ -166,3 +166,13 @@ def test_old_yaml_without_search_still_loads():
 def test_search_sources_setting_is_split_from_a_comma_list():
     settings = Settings.model_validate({"apify_token": "a", "deepseek_api_key": "b", "search_sources": "x, y"})
     assert settings.search_sources == ["x", "y"]
+
+
+EXAMPLE_TRIP = Path(__file__).resolve().parent.parent / "trip.example.yaml"
+
+
+async def test_trip_example_loads_with_a_search_block():
+    trip = await YamlConfigSource(EXAMPLE_TRIP).load()
+
+    assert trip.search is not None
+    assert trip.search.locations
