@@ -24,6 +24,7 @@ from casa_certa.sources.airbnb_page import make_client
 from casa_certa.sources.apify import ApifyActorRunner
 from casa_certa.sources.registry import build_price_source, build_review_source
 from casa_certa.web.crypto import check_passphrase
+from casa_certa.web.model import build_site
 from casa_certa.web.passphrase import generate_passphrase
 from casa_certa.web.publish import PublishError, origin_url, pages_url, publish, redact_url
 from casa_certa.web.site import write_site
@@ -138,7 +139,9 @@ async def _site(args: argparse.Namespace) -> int:
     finally:
         await engine.dispose()
     index = await asyncio.to_thread(write_site, houses, trip, passphrase, args.output_dir)
-    print(f"Wrote {index} ({len(trip.urls)} listings). Run `make publish` to put it online.")
+    site = build_site(houses, trip)
+    shown = len(site.complete) + len(site.incomplete)
+    print(f"Wrote {index} ({shown} listings). Run `make publish` to put it online.")
     return 0
 
 

@@ -127,3 +127,42 @@ notes:
         "https://www.airbnb.com.br/rooms/1": "A praia fica a 2 minutos, vimos nas fotos.",
         "2": "Quartos sem ar-condicionado.",
     }
+
+
+def test_urls_are_optional_when_search_is_present():
+    trip = make_trip(urls=[], search={"locations": ["Gramado, RS"]})
+    assert trip.urls == []
+    assert trip.search is not None
+    assert trip.search.locations == ["Gramado, RS"]
+
+
+def test_neither_urls_nor_search_is_rejected():
+    with pytest.raises(ValidationError, match=r"(?s)urls.*search|search.*urls"):
+        make_trip(urls=[])
+
+
+def test_search_defaults_and_limits():
+    trip = make_trip(search={"locations": ["  Gramado  "]})
+    assert trip.search is not None
+    assert trip.search.max_results == 40
+    assert trip.search.locations == ["Gramado"]
+    bad_searches: tuple[dict[str, object], ...] = (
+        {"locations": ["Gramado"], "max_results": 0},
+        {"locations": ["Gramado"], "min_rating": 6},
+        {"locations": []},
+        {"locations": ["   "]},
+    )
+    for bad in bad_searches:
+        with pytest.raises(ValidationError):
+            make_trip(search=bad)
+
+
+def test_old_yaml_without_search_still_loads():
+    trip = make_trip()
+    assert trip.search is None
+    assert len(trip.urls) == 1
+
+
+def test_search_sources_setting_is_split_from_a_comma_list():
+    settings = Settings.model_validate({"apify_token": "a", "deepseek_api_key": "b", "search_sources": "x, y"})
+    assert settings.search_sources == ["x", "y"]

@@ -23,10 +23,28 @@ class Aspect(BaseModel):
     details: str = ""
 
 
+class SearchConfig(BaseModel):
+    """Where to look for houses when the trip does not list every URL."""
+
+    locations: list[str] = Field(min_length=1)
+    max_results: int = Field(default=40, ge=1)
+    max_price_per_night: int | None = Field(default=None, gt=0)
+    min_rating: float | None = Field(default=None, ge=0, le=5)
+
+    @field_validator("locations")
+    @classmethod
+    def _strip_locations(cls, value: list[str]) -> list[str]:
+        stripped = [location.strip() for location in value]
+        if not all(stripped):
+            raise ValueError("locations cannot contain blank entries")
+        return stripped
+
+
 class TripConfig(BaseModel):
     """Everything the pipeline needs to know about the trip. The only input contract of the pipeline."""
 
-    urls: list[str] = Field(min_length=1)
+    urls: list[str] = Field(default_factory=list)
+    search: SearchConfig | None = None
     check_in: date
     check_out: date
     # Infants are a fixed number passed unchanged to every quote; they never count as paying guests.
@@ -42,6 +60,8 @@ class TripConfig(BaseModel):
 
     @model_validator(mode="after")
     def _validate_ranges(self) -> TripConfig:
+        if not self.urls and self.search is None:
+            raise ValueError("the trip needs at least one of urls or search")
         if self.check_out <= self.check_in:
             raise ValueError("check_out must be after check_in")
         if self.min_people > self.max_people:
@@ -83,7 +103,14 @@ class Settings(DatabaseSettings):
     price_sources: Annotated[list[str], NoDecode] = ["thelastscraper"]
     review_sources: Annotated[list[str], NoDecode] = ["kaix", "steadyscrape", "tri_angle"]
 
-    @field_validator("price_sources", "review_sources", mode="before")
+    search_sources: Annotated[list[str], NoDecode] = ["tri_angle"]
+    # Model that screens search results; cheap model for now.
+    screen_model: str = "deepseek-chat"
+    # DeepSeek API prices (USD per million tokens, cache-miss input) used for cost estimates; see .env.example.
+    deepseek_input_usd_per_mtok: float = 0.30
+    deepseek_output_usd_per_mtok: float = 1.20
+
+    @field_validator("price_sources", "review_sources", "search_sources", mode="before")
     @classmethod
     def _split_names(cls, value: object) -> object:
         if isinstance(value, str):
