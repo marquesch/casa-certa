@@ -47,3 +47,14 @@ def test_an_empty_list_is_an_error() -> None:
         build_price_source([], FakeRunner({}))
     with pytest.raises(SourceConfigError, match="No review source"):
         build_review_source([], FakeRunner({}))
+
+
+def test_search_source_builds_and_rejects_unknown_or_several_names() -> None:
+    from casa_certa.sources.registry import SEARCH_SOURCE_NAMES, build_search_source
+
+    runner = FakeRunner({})
+    assert [build_search_source([n], runner).name for n in SEARCH_SOURCE_NAMES] == list(SEARCH_SOURCE_NAMES)
+    with pytest.raises(SourceConfigError, match=r"nope.*tri_angle"):
+        build_search_source(["nope"], runner)
+    with pytest.raises(SourceConfigError, match="exactly one"):
+        build_search_source(["tri_angle", "tri_angle"], runner)

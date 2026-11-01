@@ -1,8 +1,13 @@
+from __future__ import annotations
+
 from dataclasses import dataclass, field
-from typing import Generic, Protocol, TypeVar
+from typing import TYPE_CHECKING, Generic, Protocol, TypeVar
 
 from casa_certa.config import TripConfig
 from casa_certa.sources.apify import ApifyError, PriceData, ReviewData
+
+if TYPE_CHECKING:
+    from casa_certa.sources.search_sources import SearchHit, SearchQuery
 
 T = TypeVar("T")
 
@@ -39,3 +44,11 @@ class ReviewSource(Protocol):
     ) -> SourceBatch[list[ReviewData]]: ...
 
     def estimate_usd(self, houses: int, review_cap: int) -> float: ...
+
+
+class SearchSource(Protocol):
+    name: str
+
+    async def search(self, query: SearchQuery) -> list[SearchHit]: ...
+
+    def estimate_usd(self, results: int) -> float: ...

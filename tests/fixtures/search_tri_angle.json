@@ -1,0 +1,112 @@
+[
+ {
+  "id": "1545912801929453079",
+  "url": "https://pt.airbnb.com/rooms/1545912801929453079?locale=pt-BR&currency=BRL&adults=6&children=0&infants=0&pets=0&check_in=2027-01-10&check_out=2027-01-14",
+  "title": "Triplex com vista para o mar a 50 metros da praia",
+  "propertyType": "Espaço inteiro: casa",
+  "roomType": "Entire home/apt",
+  "personCapacity": 12,
+  "isAvailable": true,
+  "location": "Itapoá",
+  "locationSubtitle": "Itapoá, Santa Catarina, Brasil",
+  "coordinates": {
+   "latitude": -26.06,
+   "longitude": -48.61
+  },
+  "rating": {
+   "guestSatisfaction": 5,
+   "reviewsCount": 16
+  },
+  "price": {
+   "label": "O preço original era R$ 4.591 e o novo preço total é R$ 3.100"
+  }
+ },
+ {
+  "id": "1580701445950311625",
+  "url": "https://pt.airbnb.com/rooms/1580701445950311625?locale=pt-BR&currency=BRL&adults=6&children=0&infants=0&pets=0&check_in=2027-01-10&check_out=2027-01-14",
+  "title": "Apartamento itapoá | Pé na areia | Piscina",
+  "propertyType": "Espaço inteiro: apartamento",
+  "roomType": "Entire home/apt",
+  "personCapacity": 6,
+  "isAvailable": true,
+  "location": "Itapoá",
+  "locationSubtitle": "Itapoá, Santa Catarina, Brasil",
+  "coordinates": {
+   "latitude": -26.12,
+   "longitude": -48.6
+  },
+  "rating": {
+   "guestSatisfaction": 4.83,
+   "reviewsCount": 6
+  },
+  "price": {
+   "label": "O preço original era R$ 6.607 e o novo preço total é R$ 5.050"
+  }
+ },
+ {
+  "id": "1534288725973490140",
+  "url": "https://pt.airbnb.com/rooms/1534288725973490140?locale=pt-BR&currency=BRL&adults=6&children=0&infants=0&pets=0&check_in=2027-01-10&check_out=2027-01-14",
+  "title": "Apartamento Premium A02 próx. ao Mar Itapoá SC",
+  "propertyType": "Espaço inteiro: apartamento",
+  "roomType": "Entire home/apt",
+  "personCapacity": 6,
+  "isAvailable": true,
+  "location": "Itapoá",
+  "locationSubtitle": "Itapoá, Santa Catarina, Brasil",
+  "coordinates": {
+   "latitude": -26.08,
+   "longitude": -48.61
+  },
+  "rating": {
+   "guestSatisfaction": 4.97,
+   "reviewsCount": 33
+  },
+  "price": {
+   "label": "Total: R$ 3.713"
+  }
+ },
+ {
+  "id": "1691614458245427047",
+  "url": "https://pt.airbnb.com/rooms/1691614458245427047?locale=pt-BR&currency=BRL&adults=6&children=0&infants=0&pets=0&check_in=2027-01-10&check_out=2027-01-14",
+  "title": "Frente Mar, na beira do calçadão! Centro itapoá-SC",
+  "propertyType": "Espaço inteiro: apartamento",
+  "roomType": "Entire home/apt",
+  "personCapacity": 7,
+  "isAvailable": true,
+  "location": "Itapoá",
+  "locationSubtitle": "Itapoá, Santa Catarina, Brasil",
+  "coordinates": {
+   "latitude": -26.07,
+   "longitude": -48.6
+  },
+  "rating": {
+   "guestSatisfaction": 5,
+   "reviewsCount": 10
+  },
+  "price": {
+   "label": "Total: R$ 8.740"
+  }
+ },
+ {
+  "id": "1321014070645447488",
+  "url": "https://pt.airbnb.com/rooms/1321014070645447488?locale=pt-BR&currency=BRL&adults=6&children=0&infants=0&pets=0&check_in=2027-01-10&check_out=2027-01-14",
+  "title": "Luxuoso c Vista espetacular p/ o mar! Praia Pérola",
+  "propertyType": "Espaço inteiro: apartamento",
+  "roomType": "Entire home/apt",
+  "personCapacity": 8,
+  "isAvailable": true,
+  "location": "Itapoá",
+  "locationSubtitle": "Itapoá, Santa Catarina, Brasil",
+  "coordinates": {
+   "latitude": -26.08,
+   "longitude": -48.61
+  },
+  "rating": {
+   "guestSatisfaction": 4.87,
+   "reviewsCount": 46
+  },
+  "price": {
+   "label": "Total: R$ 6.430"
+  }
+ }
+]
