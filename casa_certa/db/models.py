@@ -9,7 +9,7 @@ from sqlalchemy import Boolean, Date, DateTime, Enum, Float, ForeignKey, Integer
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 from casa_certa.config import TripConfig
-from casa_certa.enums import AspectStatus, EvidenceSource, PointKind, RuleKind
+from casa_certa.enums import AspectStatus, EvidenceSource, PointKind, RuleKind, ScreenStatus
 from casa_certa.names import normalize_name
 
 
@@ -244,3 +244,62 @@ class AnalysisPoint(Base):
     kind: Mapped[PointKind] = mapped_column(_enum_column(PointKind))
     text: Mapped[str] = mapped_column(Text)
     position: Mapped[int] = mapped_column(Integer)
+
+
+class SearchRun(Base):
+    """The latest search; a new one replaces it."""
+
+    __tablename__ = "search_run"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    check_in: Mapped[date] = mapped_column(Date)
+    check_out: Mapped[date] = mapped_column(Date)
+    guests: Mapped[int] = mapped_column(Integer)
+
+    hits: Mapped[list[SearchHitRow]] = relationship(
+        cascade="all, delete-orphan", lazy="selectin", order_by="SearchHitRow.position"
+    )
+
+
+class SearchHitRow(Base):
+    __tablename__ = "search_hit"
+    __table_args__ = (UniqueConstraint("search_run_id", "airbnb_id", name="uq_search_hit_run_house"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    search_run_id: Mapped[int] = mapped_column(ForeignKey("search_run.id"))
+    location: Mapped[str] = mapped_column(Text)
+    airbnb_id: Mapped[str] = mapped_column(String(32))
+    url: Mapped[str] = mapped_column(Text)
+    title: Mapped[str | None] = mapped_column(Text)
+    position: Mapped[int] = mapped_column(Integer)
+
+
+class ScreenResult(Base):
+    """The outcome of screening one searched house against the must-haves; kept so it is not screened twice."""
+
+    __tablename__ = "screen_result"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    airbnb_id: Mapped[str] = mapped_column(String(32), unique=True)
+    url: Mapped[str] = mapped_column(Text)
+    title: Mapped[str | None] = mapped_column(Text)
+    passed: Mapped[bool] = mapped_column(Boolean)
+    input_hash: Mapped[str] = mapped_column(String(64))
+    model: Mapped[str] = mapped_column(String(64))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+    verdicts: Mapped[list[ScreenVerdictRow]] = relationship(
+        cascade="all, delete-orphan", lazy="selectin", order_by="ScreenVerdictRow.id"
+    )
+
+
+class ScreenVerdictRow(Base):
+    __tablename__ = "screen_verdict"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    screen_result_id: Mapped[int] = mapped_column(ForeignKey("screen_result.id"))
+    aspect_name: Mapped[str] = mapped_column(Text)
+    status: Mapped[ScreenStatus] = mapped_column(_enum_column(ScreenStatus))
+    reason: Mapped[str] = mapped_column(Text)
+    quote: Mapped[str] = mapped_column(Text)

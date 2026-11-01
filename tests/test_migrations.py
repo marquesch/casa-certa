@@ -94,3 +94,25 @@ def test_beach_distance_columns_are_added_and_removed(tmp_path: Path, monkeypatc
     with sqlite3.connect(database) as connection:
         columns = [row[1] for row in connection.execute("PRAGMA table_info(analysis)")]
     assert "beach_distance_m" not in columns
+
+
+def test_search_and_screen_tables_are_added_and_old_tables_survive(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    database = tmp_path / "old.db"
+    monkeypatch.setenv("DATABASE_URL", f"sqlite+aiosqlite:///{database}")
+    config = Config(str(ROOT / "alembic.ini"))
+    command.upgrade(config, "07e94de0c249")
+
+    command.upgrade(config, "head")
+
+    with sqlite3.connect(database) as connection:
+        tables = {row[0] for row in connection.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
+    assert {"search_run", "search_hit", "screen_result", "screen_verdict", "house", "analysis"} <= tables
+
+    command.downgrade(config, "07e94de0c249")
+
+    with sqlite3.connect(database) as connection:
+        tables = {row[0] for row in connection.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
+    assert "search_run" not in tables
+    assert "house" in tables

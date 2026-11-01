@@ -24,3 +24,9 @@ class RuleKind(StrEnum):
 class PointKind(StrEnum):
     PRO = "pro"
     CON = "con"
+
+
+class ScreenStatus(StrEnum):
+    MEETS = "meets"
+    UNCLEAR = "unclear"
+    FAILS = "fails"

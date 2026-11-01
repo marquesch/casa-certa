@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from casa_certa.ai.schemas import HouseAnalysis
@@ -20,11 +20,16 @@ from casa_certa.db.models import (
     PriceQuote,
     Review,
     Room,
+    ScreenResult,
+    ScreenVerdictRow,
+    SearchHitRow,
+    SearchRun,
     utcnow,
 )
-from casa_certa.enums import PointKind, RuleKind
+from casa_certa.enums import PointKind, RuleKind, ScreenStatus
 from casa_certa.sources.airbnb_page import ListingFacts
 from casa_certa.sources.apify import PriceData, ReviewData
+from casa_certa.sources.search_sources import SearchHit
 
 
 def _facts_values(facts: ListingFacts) -> dict[str, Any]:
@@ -192,3 +197,72 @@ class HouseRepository:
 
     async def rollback(self) -> None:
         await self._session.rollback()
+
+
+class SearchRepository:
+    """The last search and the screen results. Callers own the transaction."""
+
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
+
+    async def replace_last_search(self, trip: TripConfig, hits: list[SearchHit]) -> None:
+        """Store these hits as the only search, once per house (the first location wins), in order."""
+        await self.session.execute(delete(SearchHitRow))
+        await self.session.execute(delete(SearchRun))
+        run = SearchRun(check_in=trip.check_in, check_out=trip.check_out, guests=trip.max_people)
+        seen: set[str] = set()
+        for hit in hits:
+            if hit.airbnb_id in seen:
+                continue
+            seen.add(hit.airbnb_id)
+            run.hits.append(
+                SearchHitRow(
+                    location=hit.location, airbnb_id=hit.airbnb_id, url=hit.url, title=hit.title, position=len(seen)
+                )
+            )
+        self.session.add(run)
+        await self.session.flush()
+
+    async def last_search_ids(self) -> list[str]:
+        return [hit.airbnb_id for hit in await self.last_search_hits()]
+
+    async def last_search_hits(self) -> list[SearchHit]:
+        rows = await self.session.scalars(select(SearchHitRow).order_by(SearchHitRow.position))
+        return [
+            SearchHit(airbnb_id=row.airbnb_id, url=row.url, title=row.title, location=row.location, rating=None)
+            for row in rows
+        ]
+
+    async def save_screen(
+        self,
+        airbnb_id: str,
+        url: str,
+        title: str | None,
+        input_hash: str,
+        model: str,
+        passed: bool,
+        verdicts: list[tuple[str, ScreenStatus, str, str]],
+    ) -> None:
+        """Store the screen result of a house, replacing any previous one."""
+        previous = await self.get_screen(airbnb_id)
+        if previous is not None:
+            await self.session.delete(previous)
+            await self.session.flush()
+        self.session.add(
+            ScreenResult(
+                airbnb_id=airbnb_id,
+                url=url,
+                title=title,
+                passed=passed,
+                input_hash=input_hash,
+                model=model,
+                verdicts=[
+                    ScreenVerdictRow(aspect_name=name, status=status, reason=reason, quote=quote)
+                    for name, status, reason, quote in verdicts
+                ],
+            )
+        )
+        await self.session.flush()
+
+    async def get_screen(self, airbnb_id: str) -> ScreenResult | None:
+        return await self.session.scalar(select(ScreenResult).where(ScreenResult.airbnb_id == airbnb_id))
