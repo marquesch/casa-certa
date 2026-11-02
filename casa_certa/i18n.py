@@ -38,6 +38,7 @@ class Labels:
     site_title: str
     trip_line: str
     updated: str
+    section_picks: str
     section_complete: str
     section_incomplete: str
     count_of: str
@@ -111,6 +112,7 @@ PT_BR = Labels(
     site_title="Casa Certa",
     trip_line="{dates} · {min} a {max} pessoas",
     updated="Atualizado em {date}",
+    section_picks="Melhores escolhas",
     section_complete="Têm todos os essenciais",
     section_incomplete="Faltam essenciais",
     count_of="de",
@@ -184,6 +186,7 @@ EN = Labels(
     site_title="Casa Certa",
     trip_line="{dates} · {min} to {max} people",
     updated="Updated {date}",
+    section_picks="Best picks",
     section_complete="Have every must-have",
     section_incomplete="Missing must-haves",
     count_of="of",

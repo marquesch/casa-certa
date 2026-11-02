@@ -124,6 +124,13 @@ group size, price per person, city, distance to the beach and required aspects, 
 to cut someone off, change `SITE_PASSPHRASE` and publish again. Never commit `site/`. Houses without an analysis
 ("sem análise") are listed last in the second section.
 
+**Best picks.** List your favourites under `picks:` in `trip.yaml` (see `trip.example.yaml`): each entry is a house
+name as the site shows it, a listing URL or an id, optionally with a one-line `why`. They appear first, in a
+"Melhores escolhas" section, in the order you wrote them. The filters and sorting do not hide or reorder them (the
+"people" selector still changes their prices), and the same houses also stay in their normal section, marked with a
+star, so anyone can compare them with the rest. A pick that matches no house is skipped with a warning when you run
+`make site`. There is no way to pick from the page itself: it is static, so the choice lives in `trip.yaml`.
+
 Security notes:
 
 - The output of `make passphrase` is as sensitive as a password: anyone who has it and the URL can read the site.

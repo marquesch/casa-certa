@@ -205,3 +205,84 @@ async def test_a_search_only_trip_shows_its_stored_hit_houses(
     site = build_site([hit], trip, ["777", "888"])
 
     assert [c.name for c in (*site.complete, *site.incomplete)] == ["Casa Achada"]
+
+
+PICK_URLS = ["https://www.airbnb.com.br/rooms/46397403", "https://www.airbnb.com.br/rooms/52584351"]
+
+
+async def two_houses(session: AsyncSession, matinhos_facts: ListingFacts, itapoa_facts: ListingFacts) -> list[House]:
+    albatroz = await store(session, "46397403", "Casa do Albatroz", matinhos_facts, totals=albatroz_totals())
+    itapoa = await store(session, "52584351", "Casa Itapoá", itapoa_facts, totals=itapoa_totals())
+    return [albatroz, itapoa]
+
+
+async def test_picks_follow_the_listed_order_and_resolve_names_ids_and_urls(
+    session: AsyncSession, matinhos_facts: ListingFacts, itapoa_facts: ListingFacts
+) -> None:
+    houses = await two_houses(session, matinhos_facts, itapoa_facts)
+    picks = [{"house": "casa do  albatroz", "why": "barata"}, "https://www.airbnb.com.br/rooms/52584351/?x=1"]
+
+    site = build_site(houses, make_trip(urls=PICK_URLS, picks=picks))
+
+    assert [(c.name, c.why) for c in site.picks] == [("Casa do Albatroz", "barata"), ("Casa Itapoá", "")]
+    by_id = build_site(houses, make_trip(urls=PICK_URLS, picks=["52584351"]))
+    assert [c.name for c in by_id.picks] == ["Casa Itapoá"]
+
+
+async def test_picked_houses_stay_in_their_normal_section_marked_as_picked(
+    session: AsyncSession, matinhos_facts: ListingFacts, itapoa_facts: ListingFacts
+) -> None:
+    houses = await two_houses(session, matinhos_facts, itapoa_facts)
+
+    site = build_site(houses, make_trip(urls=PICK_URLS, picks=["Casa Itapoá"]))
+
+    assert {c.name: c.picked for c in site.complete} == {"Casa Itapoá": True, "Casa do Albatroz": False}
+    assert all(not c.picked for c in site.picks)  # the mark is for the lower sections only
+
+
+async def test_a_pick_listed_twice_is_shown_once(
+    session: AsyncSession, matinhos_facts: ListingFacts, itapoa_facts: ListingFacts
+) -> None:
+    houses = await two_houses(session, matinhos_facts, itapoa_facts)
+
+    site = build_site(houses, make_trip(urls=PICK_URLS, picks=["Casa Itapoá", "52584351", "casa itapoá"]))
+
+    assert [c.name for c in site.picks] == ["Casa Itapoá"]
+
+
+async def test_an_unknown_pick_is_skipped_with_a_warning(
+    session: AsyncSession, matinhos_facts: ListingFacts, itapoa_facts: ListingFacts, caplog: pytest.LogCaptureFixture
+) -> None:
+    houses = await two_houses(session, matinhos_facts, itapoa_facts)
+
+    with caplog.at_level("WARNING"):
+        site = build_site(houses, make_trip(urls=PICK_URLS, picks=["Casa Fantasma", "99999999", "Casa Itapoá"]))
+
+    assert [c.name for c in site.picks] == ["Casa Itapoá"]
+    assert "Casa Fantasma" in caplog.text and "99999999" in caplog.text
+
+
+async def test_a_pick_found_by_a_search_is_shown(
+    session: AsyncSession, matinhos_facts: ListingFacts, itapoa_facts: ListingFacts
+) -> None:
+    houses = await two_houses(session, matinhos_facts, itapoa_facts)
+
+    site = build_site(houses, make_trip(urls=[PICK_URLS[0]], picks=["Casa Itapoá"]), hit_ids=["52584351"])
+
+    assert [c.name for c in site.picks] == ["Casa Itapoá"]
+
+
+async def test_a_pick_that_is_listed_but_not_stored_shows_as_a_pending_card(
+    session: AsyncSession, matinhos_facts: ListingFacts
+) -> None:
+    house = await store(session, "46397403", "Casa do Albatroz", matinhos_facts)
+
+    site = build_site([house], make_trip(urls=PICK_URLS, picks=["52584351"]))
+
+    assert [(c.name, c.analysed) for c in site.picks] == [("52584351", False)]
+
+
+async def test_no_picks_means_no_picks_section(session: AsyncSession, matinhos_facts: ListingFacts) -> None:
+    house = await store(session, "46397403", "Casa do Albatroz", matinhos_facts)
+
+    assert build_site([house], make_trip()).picks == ()

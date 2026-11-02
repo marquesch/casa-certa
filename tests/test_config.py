@@ -2,6 +2,7 @@ from datetime import date
 from pathlib import Path
 
 import pytest
+import yaml
 from pydantic import ValidationError
 
 from casa_certa.config import Aspect, AspectKind, Settings, TripConfig
@@ -183,3 +184,39 @@ def test_a_repeated_location_is_searched_once_keeping_the_first_spelling_and_ord
 
     assert trip.search is not None
     assert trip.search.locations == ["Gramado, RS", "Canela"]
+
+
+def test_picks_accept_names_urls_and_reasons():
+    trip = make_trip(
+        picks=[
+            "Casa da Piscina",
+            {"house": "https://www.airbnb.com.br/rooms/1", "why": "melhor custo por pessoa"},
+            {"house": "  52584351  "},
+        ]
+    )
+    assert [(pick.house, pick.why) for pick in trip.picks] == [
+        ("Casa da Piscina", ""),
+        ("https://www.airbnb.com.br/rooms/1", "melhor custo por pessoa"),
+        ("52584351", ""),
+    ]
+
+
+def test_picks_default_to_none_and_reject_blank_entries():
+    assert make_trip().picks == []
+    for blank in ("", "   ", {"house": " "}, {"why": "sem casa"}):
+        with pytest.raises(ValidationError):
+            make_trip(picks=[blank])
+
+
+def test_picks_accept_unquoted_listing_ids_as_yaml_reads_them():
+    text = "picks:\n  - 942217176212071877\n  - house: 52584351\n    why: melhor custo por pessoa\n"
+    trip = TripConfig.model_validate(
+        {"urls": ["https://www.airbnb.com.br/rooms/1"], "check_in": "2027-01-10", "check_out": "2027-01-14"}
+        | yaml.safe_load(text)
+    )
+    assert [(pick.house, pick.why) for pick in trip.picks] == [
+        ("942217176212071877", ""),
+        ("52584351", "melhor custo por pessoa"),
+    ]
+    with pytest.raises(ValidationError):
+        make_trip(picks=[True])

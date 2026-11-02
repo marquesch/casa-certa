@@ -44,6 +44,36 @@ class SearchConfig(BaseModel):
         return list(first_of.values())
 
 
+class Pick(BaseModel):
+    """A house the organiser chose for the "best picks" section: a name, a listing URL or an id, and an optional reason.
+
+    In the trip file an entry may be just the text, or `{house: ..., why: ...}`."""
+
+    house: str
+    why: str = ""
+
+    @model_validator(mode="before")
+    @classmethod
+    def _from_plain_text(cls, value: object) -> object:
+        # YAML reads an unquoted listing id as a number, so numbers count as text here.
+        if isinstance(value, str | int) and not isinstance(value, bool):
+            return {"house": str(value)}
+        if isinstance(value, dict) and isinstance(value.get("house"), int) and not isinstance(value["house"], bool):
+            return {**value, "house": str(value["house"])}
+        return value
+
+    @field_validator("house", "why")
+    @classmethod
+    def _strip(cls, value: str) -> str:
+        return value.strip()
+
+    @model_validator(mode="after")
+    def _needs_a_house(self) -> Pick:
+        if not self.house:
+            raise ValueError("a pick needs a house name, listing URL or id")
+        return self
+
+
 class TripConfig(BaseModel):
     """Everything the pipeline needs to know about the trip. The only input contract of the pipeline."""
 
@@ -61,6 +91,8 @@ class TripConfig(BaseModel):
     review_cap: int = Field(default=30, ge=0)
     # What the family knows about a house (for example from the photos), keyed by listing URL or id.
     notes: dict[str, str] = Field(default_factory=dict)
+    # The organiser's hand-picked favourites, shown first on the site in this order.
+    picks: list[Pick] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def _validate_ranges(self) -> TripConfig:

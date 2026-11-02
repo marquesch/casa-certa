@@ -124,3 +124,26 @@ async def test_the_page_can_be_rendered_in_english(session: AsyncSession, stored
 async def test_an_unanalysed_card_is_marked_pending_for_the_script(session: AsyncSession, stored_house: House) -> None:
     html = page(stored_house)
     assert 'data-pending="1"' in html
+
+
+async def test_the_best_picks_section_comes_first_with_reasons_and_marks_the_normal_cards(
+    session: AsyncSession, stored_house: House
+) -> None:
+    house = await analysed_house(session, stored_house)
+
+    html = page(house, picks=[{"house": house.name, "why": "melhor <custo>"}])
+
+    assert html.index('id="picks"') < html.index('id="complete"')
+    assert "Melhores escolhas" in html
+    assert "melhor &lt;custo&gt;" in html  # the reason is escaped
+    assert html.count("<article") == 3  # the pick, plus the same house in its section, plus the pending second url
+    assert html.count('class="pick-mark"') == 1  # only the normal card carries the mark
+
+
+async def test_without_picks_the_page_has_no_picks_section(session: AsyncSession, stored_house: House) -> None:
+    house = await analysed_house(session, stored_house)
+
+    html = page(house)
+
+    assert 'id="picks"' not in html
+    assert 'class="pick-mark"' not in html

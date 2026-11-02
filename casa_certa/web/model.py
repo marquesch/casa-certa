@@ -1,14 +1,18 @@
 """View models for the static site: plain data built from the stored houses, with no HTML in it."""
 
+import logging
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date, datetime
 
 from casa_certa.config import AspectKind, TripConfig
 from casa_certa.db.models import House
 from casa_certa.enums import AspectStatus, EvidenceSource, PointKind
+from casa_certa.names import normalize_name
 from casa_certa.pricing import PriceRow, SizeQuote, price_table
 from casa_certa.sources.airbnb_page import listing_url, room_id_from_url
+
+log = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -52,6 +56,8 @@ class HouseCard:
     cons: tuple[str, ...] = ()
     aspects: tuple[AspectView, ...] = ()
     prices: tuple[PriceRow, ...] = ()
+    why: str = ""  # the organiser's reason, on a best-pick card
+    picked: bool = False  # in the normal sections: this house is also one of the best picks
 
     @property
     def missing_must_haves(self) -> tuple[AspectView, ...]:
@@ -84,6 +90,7 @@ class SiteModel:
     updated_at: datetime | None
     complete: tuple[HouseCard, ...]
     incomplete: tuple[HouseCard, ...]
+    picks: tuple[HouseCard, ...] = ()
 
     @property
     def sizes(self) -> range:
@@ -147,6 +154,24 @@ def _card(house: House, trip: TripConfig) -> HouseCard:
     )
 
 
+def _resolve_picks(trip: TripConfig, cards: Sequence[HouseCard]) -> list[HouseCard]:
+    """The cards the organiser picked, in the listed order. A pick is a listing URL or id, or a house name; one that
+    matches no card is skipped with a warning, and a house picked twice is kept once."""
+    by_room = {room_id_from_url(card.url): card for card in cards}
+    by_name = {normalize_name(card.name): card for card in cards}
+    picked: dict[str, HouseCard] = {}
+    for pick in trip.picks:
+        try:
+            card = by_room.get(room_id_from_url(pick.house))
+        except ValueError:
+            card = by_name.get(normalize_name(pick.house))
+        if card is None:
+            log.warning("picks: %r matches none of the houses on the site; skipped", pick.house)
+        else:
+            picked.setdefault(room_id_from_url(card.url), replace(card, why=pick.why))
+    return list(picked.values())
+
+
 def build_site(houses: list[House], trip: TripConfig, hit_ids: Sequence[str] = ()) -> SiteModel:
     """Cards for the trip's urls (pending when not stored) and the stored houses among `hit_ids`, in two sections.
 
@@ -169,6 +194,9 @@ def build_site(houses: list[House], trip: TripConfig, hit_ids: Sequence[str] = (
             shown.append(house)
             cards.append(_card(house, trip))
     cards.sort(key=lambda card: default_sort_key(card, trip.max_people))
+    picks = _resolve_picks(trip, cards)
+    picked_ids = {room_id_from_url(card.url) for card in picks}
+    cards = [replace(card, picked=room_id_from_url(card.url) in picked_ids) for card in cards]
     fetched = [quote.fetched_at for house in shown for quote in house.quotes_by_guests(trip).values()]
     return SiteModel(
         check_in=trip.check_in,
@@ -180,4 +208,5 @@ def build_site(houses: list[House], trip: TripConfig, hit_ids: Sequence[str] = (
         updated_at=max(fetched, default=None),
         complete=tuple(card for card in cards if card.has_all_must_haves),
         incomplete=tuple(card for card in cards if not card.has_all_must_haves),
+        picks=tuple(picks),
     )

@@ -4,7 +4,8 @@
 
 {% macro card(c, show_missing) %}
 <article class="card{% if not c.analysed %} pending{% endif %}" data-city="{{ c.city or '' }}" data-rating="{{ '' if c.rating is none else c.rating }}" data-reviews="{{ '' if c.review_count is none else c.review_count }}" data-beach="{{ '' if c.beach_distance_m is none else c.beach_distance_m }}"{% for p in c.prices %} data-price{{ p.people }}="{{ '' if p.per_person_cents is none else p.per_person_cents }}"{% endfor %} data-met="{{ c.met_indexes | join(' ') }}" data-pending="{{ '' if c.analysed else '1' }}">
-  <h3><a href="{{ c.url }}" target="_blank" rel="noopener noreferrer">{{ c.name }}</a></h3>
+  <h3><a href="{{ c.url }}" target="_blank" rel="noopener noreferrer">{{ c.name }}</a>{% if c.picked %} <span class="pick-mark" title="{{ labels.section_picks }}">⭐</span><span class="sr">{{ labels.section_picks }}</span>{% endif %}</h3>
+  {% if c.why %}<p class="why">{{ c.why }}</p>{% endif %}
   {% if not c.analysed %}
   <p class="muted">{{ labels.no_analysis }}</p>
   {% else %}
@@ -126,6 +127,13 @@
     </div>
     <button type="button" id="f-clear">{{ labels.clear_filters }}</button>
   </details>
+
+  {% if site.picks %}
+  <section class="picks" id="picks">
+    <h2>{{ labels.section_picks }} <span class="count">({{ site.picks | length }})</span></h2>
+    <div class="cards">{% for c in site.picks %}{{ card(c, true) }}{% endfor %}</div>
+  </section>
+  {% endif %}
 
   {{ group("complete", labels.section_complete, site.complete, false) }}
   {{ group("incomplete", labels.section_incomplete, site.incomplete, true) }}

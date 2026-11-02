@@ -31,3 +31,11 @@ aspects:
 # What you know about a house (for example from the photos), keyed by listing URL or id.
 # A changed note makes only that house be analysed again.
 notes: {}
+# Your favourites, shown first on the site in "Melhores escolhas", in this order. Each entry is a house name as the
+# site shows it, a listing URL or an id; add `why` for a one-line reason shown on the card. The houses also stay in
+# their normal section, marked with a star. A pick that matches no house is skipped with a warning on `make site`.
+# picks:
+#   - Casa da Piscina
+#   - https://www.airbnb.com.br/rooms/87654321
+#   - house: Casa do Albatroz
+#     why: melhor custo por pessoa
